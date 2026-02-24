@@ -1,0 +1,68 @@
+# clockie — Wayland layer-shell desktop clock
+# Copy to ~/.config/clockie/config.toml
+
+[window]
+# Initial size in logical pixels
+width  = 320
+height = 240
+# Layer: background | bottom | top | overlay
+layer  = "top"
+# Anchor edges: top | bottom | left | right (space-separated)
+anchor = "top right"
+# Margin from anchored edges (px)
+margin_top    = 20
+margin_right  = 20
+margin_bottom = 0
+margin_left   = 0
+# Allow interactive resize via pointer drag
+resizable = true
+# Window opacity 0.0–1.0
+opacity = 1.0
+# Start in compact mode
+compact = false
+
+[clock]
+# "digital" | "analogue"
+face = "digital"
+# 12 | 24
+hour_format = 12
+# Show seconds on digital face
+show_seconds = true
+# Show date line on digital face
+show_date = true
+# Date format string (chrono strftime)
+date_format = "%A, %d %B %Y"
+# Font: system font name or path to .ttf/.otf
+font = "monospace"
+
+[theme]
+# Foreground colour (RRGGBBAA hex, # prefix optional)
+fg_color          = "FFFFFFFF"
+# Background fill colour (used if no bg_image, or as scrim tint)
+bg_color          = "1a1a2eCC"
+# Analogue hand colours
+hour_hand_color   = "FFFFFFFF"
+minute_hand_color = "FFFFFFFF"
+second_hand_color = "ef4444FF"
+# Tick mark colour (used when no face image)
+tick_color        = "CCCCCCFF"
+
+[background]
+# Path to a PNG/JPEG image to render behind digital clock text
+# Empty = use bg_color fill
+digital_image = ""
+# Path to a PNG/JPEG image to use as the analogue clock face
+# Replaces drawn circle + ticks — hands are drawn on top
+analogue_face_image = ""
+# Scale mode: "fill" | "fit" | "stretch" | "center"
+image_scale = "fill"
+
+# Up to 2 timezone entries. Additional entries are ignored.
+
+# [[timezone]]
+# label = "London"
+# tz    = "Europe/London"
+
+# [[timezone]]
+# label = "New York"
+# tz    = "America/New_York"

@@ -1,0 +1,111 @@
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::io::{BufRead, BufReader, Write};
+use std::os::unix::net::{UnixListener, UnixStream};
+use std::path::PathBuf;
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "cmd", rename_all = "kebab-case")]
+pub enum IpcCommand {
+    SetFace { face: String },
+    ToggleFace,
+    SetCompact { compact: bool },
+    ToggleCompact,
+    SetSize { width: u32, height: u32 },
+    ResizeBy { delta: i32 },
+    ReloadConfig,
+    GetState,
+    Quit,
+}
+
+#[derive(Debug, Serialize)]
+pub struct IpcResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    // State fields (only for get-state)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub face: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub compact: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub width: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub height: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_path: Option<String>,
+}
+
+impl IpcResponse {
+    pub fn ok() -> Self {
+        Self { ok: true, error: None, face: None, compact: None, width: None, height: None, config_path: None }
+    }
+
+    pub fn err(msg: impl Into<String>) -> Self {
+        Self { ok: false, error: Some(msg.into()), face: None, compact: None, width: None, height: None, config_path: None }
+    }
+
+    pub fn state(face: &str, compact: bool, width: u32, height: u32, config_path: &str) -> Self {
+        Self {
+            ok: true,
+            error: None,
+            face: Some(face.into()),
+            compact: Some(compact),
+            width: Some(width),
+            height: Some(height),
+            config_path: Some(config_path.into()),
+        }
+    }
+}
+
+pub fn socket_path(override_path: Option<&PathBuf>) -> PathBuf {
+    if let Some(p) = override_path {
+        return p.clone();
+    }
+    if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
+        PathBuf::from(dir).join("clockie.sock")
+    } else {
+        let uid = unsafe { libc::getuid() };
+        PathBuf::from(format!("/tmp/clockie-{}.sock", uid))
+    }
+}
+
+pub fn create_listener(path: &PathBuf) -> Result<UnixListener> {
+    // Remove stale socket
+    if path.exists() {
+        // Check if another instance is running
+        if UnixStream::connect(path).is_ok() {
+            anyhow::bail!("Another clockie instance is already running (socket {} is active)", path.display());
+        }
+        std::fs::remove_file(path)?;
+    }
+
+    let listener = UnixListener::bind(path)?;
+    listener.set_nonblocking(true)?;
+    log::info!("IPC listening on {}", path.display());
+    Ok(listener)
+}
+
+pub fn cleanup_socket(path: &PathBuf) {
+    if path.exists() {
+        let _ = std::fs::remove_file(path);
+        log::info!("Removed socket {}", path.display());
+    }
+}
+
+pub fn read_command(stream: &UnixStream) -> Result<IpcCommand> {
+    let reader = BufReader::new(stream);
+    let mut line = String::new();
+    let mut reader = reader;
+    reader.read_line(&mut line)?;
+    let cmd: IpcCommand = serde_json::from_str(line.trim())?;
+    Ok(cmd)
+}
+
+pub fn write_response(stream: &mut UnixStream, response: &IpcResponse) -> Result<()> {
+    let json = serde_json::to_string(response)?;
+    stream.write_all(json.as_bytes())?;
+    stream.write_all(b"\n")?;
+    stream.flush()?;
+    Ok(())
+}

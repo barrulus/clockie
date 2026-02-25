@@ -45,6 +45,7 @@ Commands:
   lock <MODE>       Control drag lock (on, off, toggle)
   size <ARGS>       Set content size or scale by delta
   output <NAME>     Move clock to a named output (or "next"/"prev" to cycle)
+  gallery <ACTION>  Control background image gallery
   reload            Reload configuration file
   state             Print current state as JSON
   quit              Shut down clockie
@@ -114,13 +115,29 @@ clockiectl output prev       # cycle to the previous output
 
 The output name is persisted to config. You can also drag the clock across monitor edges -- see [Multi-monitor](multi-monitor.md).
 
+### gallery
+
+Control the background image gallery. Operates on whichever face mode is currently active (digital or analogue).
+
+```sh
+clockiectl gallery next                # advance to next image
+clockiectl gallery prev                # go back to previous image
+clockiectl gallery set 2               # jump to image at index 2
+clockiectl gallery start               # start auto-rotate (uses configured interval)
+clockiectl gallery start --interval 5  # start auto-rotate with 5-second interval
+clockiectl gallery stop                # stop auto-rotate
+clockiectl gallery interval 10         # set rotate interval to 10 seconds
+```
+
+Requires `digital_images` or `analogue_face_images` to be configured in `[background]`. See [Configuration](configuration.md#background) for details.
+
 ### reload
 
 ```sh
 clockiectl reload
 ```
 
-Re-reads the config file from disk. Preserves the current face mode and compact state. Applies changes to: colours, font, margins, anchor, layer, background images, battery settings, timezones, font_size, diameter.
+Re-reads the config file from disk. Preserves the current face mode and compact state. Applies changes to: colours, font, margins, anchor, layer, background images, gallery arrays, battery settings, timezones, font_size, diameter.
 
 ### state
 
@@ -141,7 +158,13 @@ Prints the current state as JSON:
   "diameter": 180,
   "config_path": "/home/user/.config/clockie/config.toml",
   "locked": false,
-  "output": "eDP-1"
+  "output": "eDP-1",
+  "gallery_digital_index": 0,
+  "gallery_analogue_index": 0,
+  "gallery_digital_count": 3,
+  "gallery_analogue_count": 2,
+  "gallery_rotate_active": true,
+  "gallery_rotate_interval": 300
 }
 ```
 

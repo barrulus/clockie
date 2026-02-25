@@ -24,6 +24,9 @@ bind = ALT, RIGHT, exec, clockiectl lock toggle
 # Scale up / down
 bind = ALT, EQUAL, exec, clockiectl size +10
 bind = ALT, MINUS, exec, clockiectl size -10
+# Gallery: next / previous image
+bind = ALT, BRACKETRIGHT, exec, clockiectl gallery next
+bind = ALT, BRACKETLEFT, exec, clockiectl gallery prev
 ```
 
 ### Layer rules
@@ -64,6 +67,9 @@ binds {
     // Scale up / down
     Alt+Equal { spawn "clockiectl" "size" "+10"; }
     Alt+Minus { spawn "clockiectl" "size" "-10"; }
+    // Gallery: next / previous image
+    Alt+BracketRight { spawn "clockiectl" "gallery" "next"; }
+    Alt+BracketLeft { spawn "clockiectl" "gallery" "prev"; }
 }
 ```
 
@@ -103,6 +109,9 @@ bind=ALT,Right,spawn,clockiectl lock toggle
 # Scale up / down
 bind=ALT,Equal,spawn,clockiectl size +10
 bind=ALT,Minus,spawn,clockiectl size -10
+# Gallery: next / previous image
+bind=ALT,BracketRight,spawn,clockiectl gallery next
+bind=ALT,BracketLeft,spawn,clockiectl gallery prev
 ```
 
 ### Layer rules
@@ -138,6 +147,9 @@ bindsym Alt+Right exec clockiectl lock toggle
 # Scale up / down
 bindsym Alt+equal exec clockiectl size +10
 bindsym Alt+minus exec clockiectl size -10
+# Gallery: next / previous image
+bindsym Alt+bracketright exec clockiectl gallery next
+bindsym Alt+bracketleft exec clockiectl gallery prev
 ```
 
 ## General notes

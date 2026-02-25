@@ -56,6 +56,11 @@ digital_image = ""
 analogue_face_image = ""
 # Scale mode: "fill" | "fit" | "stretch" | "center"
 image_scale = "fill"
+# Gallery: multiple images to cycle through (overrides single-image fields when non-empty)
+# digital_images = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
+# analogue_face_images = ["~/faces/classic.png", "~/faces/minimal.png"]
+# Auto-rotate interval in seconds (0 = disabled)
+# gallery_interval = 300
 
 # Up to 2 timezone entries. Additional entries are ignored.
 

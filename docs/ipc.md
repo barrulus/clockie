@@ -23,8 +23,16 @@ For programmatic control beyond `clockiectl`, you can send JSON commands directl
 | Reload config | `{"cmd": "reload-config"}` |
 | Get state | `{"cmd": "get-state"}` |
 | Quit | `{"cmd": "quit"}` |
+| Gallery next | `{"cmd": "gallery-next"}` |
+| Gallery previous | `{"cmd": "gallery-prev"}` |
+| Gallery set index | `{"cmd": "gallery-set", "index": 2}` |
+| Gallery start rotate | `{"cmd": "gallery-rotate-start"}` or `{"cmd": "gallery-rotate-start", "interval": 5}` |
+| Gallery stop rotate | `{"cmd": "gallery-rotate-stop"}` |
+| Gallery set interval | `{"cmd": "gallery-rotate-interval", "seconds": 10}` |
 
 The `move-to-output` command also accepts `"next"` and `"prev"` as the name to cycle through outputs.
+
+`gallery-next`/`gallery-prev`/`gallery-set` operate on whichever face mode is currently active (digital or analogue).
 
 ## Responses
 
@@ -50,7 +58,13 @@ The `move-to-output` command also accepts `"next"` and `"prev"` as the name to c
   "diameter": 180,
   "config_path": "/home/user/.config/clockie/config.toml",
   "locked": false,
-  "output": "eDP-1"
+  "output": "eDP-1",
+  "gallery_digital_index": 0,
+  "gallery_analogue_index": 0,
+  "gallery_digital_count": 3,
+  "gallery_analogue_count": 2,
+  "gallery_rotate_active": true,
+  "gallery_rotate_interval": 300
 }
 ```
 

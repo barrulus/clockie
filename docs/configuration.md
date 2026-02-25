@@ -63,8 +63,13 @@ All colours are specified in `RRGGBB` or `RRGGBBAA` hex format. The `#` prefix i
 | `digital_image` | string | `""` | Path to PNG/JPEG background for digital face (empty = solid `bg_color`) |
 | `analogue_face_image` | string | `""` | Path to PNG/JPEG for the analogue clock face (replaces procedural tick marks) |
 | `image_scale` | string | `"fill"` | Scale mode: `"fill"`, `"fit"`, `"stretch"`, or `"center"` |
+| `digital_images` | array of strings | `[]` | Gallery of digital background images (overrides `digital_image` when non-empty) |
+| `analogue_face_images` | array of strings | `[]` | Gallery of analogue face images (overrides `analogue_face_image` when non-empty) |
+| `gallery_interval` | integer | `0` | Auto-rotate interval in seconds. `0` = disabled. |
 
 Paths support `~` for the home directory (e.g. `"~/Pictures/clock.png"`).
+
+**Gallery:** When `digital_images` or `analogue_face_images` is non-empty, the gallery system is active for that mode. Use `clockiectl gallery next`/`prev` to cycle manually, or set `gallery_interval` to auto-rotate. If the gallery arrays are empty, the single-image fields (`digital_image`/`analogue_face_image`) are used as before.
 
 **Scale modes:**
 - `fill` -- scale to cover the entire area, cropping overflow (default)
@@ -132,6 +137,9 @@ tick_color        = "CCCCCCFF"
 digital_image       = ""
 analogue_face_image = ""
 image_scale         = "fill"
+# digital_images = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
+# analogue_face_images = ["~/faces/classic.png", "~/faces/minimal.png"]
+# gallery_interval = 300
 
 [battery]
 enabled         = true

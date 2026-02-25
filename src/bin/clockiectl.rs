@@ -47,12 +47,43 @@ enum Commands {
         /// Output name (e.g. HDMI-A-1), or "next"/"prev" to cycle
         name: String,
     },
+    /// Control face/background image gallery
+    Gallery {
+        #[command(subcommand)]
+        action: GalleryAction,
+    },
     /// Shut down clockie
     Quit,
     /// Generate shell completions
     Completions {
         /// Shell to generate completions for
         shell: Shell,
+    },
+}
+
+#[derive(Subcommand)]
+enum GalleryAction {
+    /// Advance to the next gallery image
+    Next,
+    /// Go back to the previous gallery image
+    Prev,
+    /// Jump to a specific gallery image by index
+    Set {
+        /// Zero-based image index
+        index: usize,
+    },
+    /// Start auto-rotating gallery images
+    Start {
+        /// Rotation interval in seconds (uses configured value if omitted)
+        #[arg(long)]
+        interval: Option<u64>,
+    },
+    /// Stop auto-rotating gallery images
+    Stop,
+    /// Set the auto-rotate interval in seconds
+    Interval {
+        /// Interval in seconds
+        seconds: u64,
     },
 }
 
@@ -145,6 +176,20 @@ fn main() -> Result<()> {
             "off" => json!({"cmd": "set-locked", "locked": false}),
             "toggle" => json!({"cmd": "toggle-locked"}),
             other => anyhow::bail!("Unknown lock mode: {}. Use on, off, or toggle", other),
+        },
+        Commands::Gallery { action } => match action {
+            GalleryAction::Next => json!({"cmd": "gallery-next"}),
+            GalleryAction::Prev => json!({"cmd": "gallery-prev"}),
+            GalleryAction::Set { index } => json!({"cmd": "gallery-set", "index": index}),
+            GalleryAction::Start { interval } => {
+                let mut cmd = json!({"cmd": "gallery-rotate-start"});
+                if let Some(secs) = interval {
+                    cmd["interval"] = json!(secs);
+                }
+                cmd
+            }
+            GalleryAction::Stop => json!({"cmd": "gallery-rotate-stop"}),
+            GalleryAction::Interval { seconds } => json!({"cmd": "gallery-rotate-interval", "seconds": seconds}),
         },
         Commands::Output { name } => json!({"cmd": "move-to-output", "name": name}),
         Commands::Reload => json!({"cmd": "reload-config"}),

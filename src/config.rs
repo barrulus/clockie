@@ -91,6 +91,12 @@ pub struct BackgroundConfig {
     pub analogue_face_image: String,
     #[serde(default = "default_image_scale")]
     pub image_scale: String,
+    #[serde(default)]
+    pub digital_images: Vec<String>,
+    #[serde(default)]
+    pub analogue_face_images: Vec<String>,
+    #[serde(default)]
+    pub gallery_interval: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -216,6 +222,35 @@ impl Default for BackgroundConfig {
             digital_image: String::new(),
             analogue_face_image: String::new(),
             image_scale: default_image_scale(),
+            digital_images: Vec::new(),
+            analogue_face_images: Vec::new(),
+            gallery_interval: 0,
+        }
+    }
+}
+
+impl BackgroundConfig {
+    /// Return the effective list of digital background images.
+    /// Uses `digital_images` if non-empty, else wraps `digital_image` into a vec (if non-empty).
+    pub fn effective_digital_images(&self) -> Vec<String> {
+        if !self.digital_images.is_empty() {
+            self.digital_images.clone()
+        } else if !self.digital_image.is_empty() {
+            vec![self.digital_image.clone()]
+        } else {
+            Vec::new()
+        }
+    }
+
+    /// Return the effective list of analogue face images.
+    /// Uses `analogue_face_images` if non-empty, else wraps `analogue_face_image` into a vec (if non-empty).
+    pub fn effective_analogue_face_images(&self) -> Vec<String> {
+        if !self.analogue_face_images.is_empty() {
+            self.analogue_face_images.clone()
+        } else if !self.analogue_face_image.is_empty() {
+            vec![self.analogue_face_image.clone()]
+        } else {
+            Vec::new()
         }
     }
 }
@@ -376,6 +411,11 @@ digital_image = ""
 analogue_face_image = ""
 # Scale mode: "fill" | "fit" | "stretch" | "center"
 image_scale = "fill"
+# Gallery: multiple images to cycle through (overrides single-image fields when non-empty)
+# digital_images = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
+# analogue_face_images = ["~/faces/classic.png", "~/faces/minimal.png"]
+# Auto-rotate interval in seconds (0 = disabled)
+# gallery_interval = 300
 
 [battery]
 # Show a battery indicator in the top-right corner

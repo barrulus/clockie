@@ -25,12 +25,106 @@ use std::os::unix::net::UnixListener;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use crate::canvas::{Canvas, FontState};
 use crate::config::{self, ClockConfig, FaceMode};
 use crate::ipc;
 use crate::renderer::{self, ClockState};
 use crate::time_utils;
+
+pub struct GalleryState {
+    digital_index: usize,
+    analogue_index: usize,
+    digital_images: Vec<String>,
+    analogue_images: Vec<String>,
+    rotate_interval: Duration,
+    rotate_active: bool,
+    last_rotate: Instant,
+}
+
+impl GalleryState {
+    fn from_config(config: &ClockConfig) -> Self {
+        let interval_secs = config.background.gallery_interval;
+        let rotate_interval = Duration::from_secs(interval_secs);
+        Self {
+            digital_index: 0,
+            analogue_index: 0,
+            digital_images: config.background.effective_digital_images(),
+            analogue_images: config.background.effective_analogue_face_images(),
+            rotate_interval,
+            rotate_active: interval_secs > 0,
+            last_rotate: Instant::now(),
+        }
+    }
+
+    fn next_digital(&mut self) {
+        if !self.digital_images.is_empty() {
+            self.digital_index = (self.digital_index + 1) % self.digital_images.len();
+        }
+    }
+
+    fn prev_digital(&mut self) {
+        if !self.digital_images.is_empty() {
+            self.digital_index = (self.digital_index + self.digital_images.len() - 1) % self.digital_images.len();
+        }
+    }
+
+    fn next_analogue(&mut self) {
+        if !self.analogue_images.is_empty() {
+            self.analogue_index = (self.analogue_index + 1) % self.analogue_images.len();
+        }
+    }
+
+    fn prev_analogue(&mut self) {
+        if !self.analogue_images.is_empty() {
+            self.analogue_index = (self.analogue_index + self.analogue_images.len() - 1) % self.analogue_images.len();
+        }
+    }
+
+    fn rotate(&mut self) {
+        self.next_digital();
+        self.next_analogue();
+        self.last_rotate = Instant::now();
+    }
+
+    fn current_digital_image(&self) -> &str {
+        if self.digital_images.is_empty() {
+            ""
+        } else {
+            &self.digital_images[self.digital_index]
+        }
+    }
+
+    fn current_analogue_image(&self) -> &str {
+        if self.analogue_images.is_empty() {
+            ""
+        } else {
+            &self.analogue_images[self.analogue_index]
+        }
+    }
+
+    fn reload_from_config(&mut self, config: &ClockConfig) {
+        self.digital_images = config.background.effective_digital_images();
+        self.analogue_images = config.background.effective_analogue_face_images();
+        // Clamp indices
+        if !self.digital_images.is_empty() {
+            self.digital_index = self.digital_index.min(self.digital_images.len() - 1);
+        } else {
+            self.digital_index = 0;
+        }
+        if !self.analogue_images.is_empty() {
+            self.analogue_index = self.analogue_index.min(self.analogue_images.len() - 1);
+        } else {
+            self.analogue_index = 0;
+        }
+        let interval_secs = config.background.gallery_interval;
+        self.rotate_interval = Duration::from_secs(interval_secs);
+        if interval_secs == 0 {
+            self.rotate_active = false;
+        }
+    }
+}
 
 pub struct Clockie {
     registry_state: RegistryState,
@@ -67,6 +161,9 @@ pub struct Clockie {
 
     // Pending initial output move (applied after first configure when outputs are known)
     pending_output_move: Option<String>,
+
+    // Gallery
+    gallery: GalleryState,
 
     should_quit: bool,
 }
@@ -148,6 +245,7 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
     let ipc_listener = ipc::create_listener(&ipc_socket_path)?;
 
     let pending_output_move = config.window.output.clone();
+    let gallery = GalleryState::from_config(&config);
 
     let mut clockie = Clockie {
         registry_state: RegistryState::new(&globals),
@@ -176,6 +274,7 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
         ipc_listener,
         ipc_socket_path,
         pending_output_move,
+        gallery,
         should_quit: false,
     };
 
@@ -228,6 +327,15 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
         let current_second = chrono::Timelike::second(&now);
         if current_second != last_second {
             last_second = current_second;
+            clockie.needs_redraw = true;
+        }
+
+        // Gallery auto-rotate timer
+        if clockie.gallery.rotate_active
+            && clockie.gallery.rotate_interval > Duration::ZERO
+            && clockie.gallery.last_rotate.elapsed() >= clockie.gallery.rotate_interval
+        {
+            clockie.gallery.rotate();
             clockie.needs_redraw = true;
         }
 
@@ -488,8 +596,13 @@ impl Clockie {
             None
         };
 
+        // Patch config with current gallery images
+        let mut render_config = self.config.clone();
+        render_config.background.digital_image = self.gallery.current_digital_image().to_string();
+        render_config.background.analogue_face_image = self.gallery.current_analogue_image().to_string();
+
         let state = ClockState {
-            config: self.config.clone(),
+            config: render_config,
             time,
             compact: self.compact,
             battery,
@@ -666,6 +779,7 @@ impl Clockie {
                         self.config.clock.face = face;
                         self.compact = compact;
                         self.font = FontState::new(&self.config.clock.font);
+                        self.gallery.reload_from_config(&self.config);
 
                         // Recompute size from new config
                         self.update_size();
@@ -692,10 +806,79 @@ impl Clockie {
                     &self.config_path.to_string_lossy(),
                     self.locked,
                     output_name.as_deref(),
+                ).with_gallery(
+                    self.gallery.digital_index,
+                    self.gallery.analogue_index,
+                    self.gallery.digital_images.len(),
+                    self.gallery.analogue_images.len(),
+                    self.gallery.rotate_active,
+                    self.gallery.rotate_interval.as_secs(),
                 )
             }
             ipc::IpcCommand::Quit => {
                 self.should_quit = true;
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GalleryNext => {
+                match self.config.clock.face {
+                    FaceMode::Digital => self.gallery.next_digital(),
+                    FaceMode::Analogue => self.gallery.next_analogue(),
+                }
+                self.needs_redraw = true;
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GalleryPrev => {
+                match self.config.clock.face {
+                    FaceMode::Digital => self.gallery.prev_digital(),
+                    FaceMode::Analogue => self.gallery.prev_analogue(),
+                }
+                self.needs_redraw = true;
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GallerySet { index } => {
+                match self.config.clock.face {
+                    FaceMode::Digital => {
+                        if self.gallery.digital_images.is_empty() {
+                            return ipc::IpcResponse::err("No digital gallery images configured");
+                        }
+                        if index >= self.gallery.digital_images.len() {
+                            return ipc::IpcResponse::err(format!("Index {} out of range (0..{})", index, self.gallery.digital_images.len() - 1));
+                        }
+                        self.gallery.digital_index = index;
+                    }
+                    FaceMode::Analogue => {
+                        if self.gallery.analogue_images.is_empty() {
+                            return ipc::IpcResponse::err("No analogue gallery images configured");
+                        }
+                        if index >= self.gallery.analogue_images.len() {
+                            return ipc::IpcResponse::err(format!("Index {} out of range (0..{})", index, self.gallery.analogue_images.len() - 1));
+                        }
+                        self.gallery.analogue_index = index;
+                    }
+                }
+                self.needs_redraw = true;
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GalleryRotateStart { interval } => {
+                if let Some(secs) = interval {
+                    self.gallery.rotate_interval = Duration::from_secs(secs);
+                }
+                if self.gallery.rotate_interval == Duration::ZERO {
+                    return ipc::IpcResponse::err("No rotate interval set (use --interval or configure gallery_interval)");
+                }
+                self.gallery.rotate_active = true;
+                self.gallery.last_rotate = Instant::now();
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GalleryRotateStop => {
+                self.gallery.rotate_active = false;
+                ipc::IpcResponse::ok()
+            }
+            ipc::IpcCommand::GalleryRotateInterval { seconds } => {
+                self.gallery.rotate_interval = Duration::from_secs(seconds);
+                if self.gallery.rotate_active {
+                    self.gallery.last_rotate = Instant::now();
+                }
                 ipc::IpcResponse::ok()
             }
         }

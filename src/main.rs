@@ -1,3 +1,4 @@
+mod battery;
 mod canvas;
 mod config;
 mod ipc;
@@ -6,7 +7,8 @@ mod time_utils;
 mod wayland;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -39,12 +41,22 @@ struct Args {
     /// Override IPC socket path
     #[arg(long)]
     socket: Option<PathBuf>,
+
+    /// Generate shell completions and exit
+    #[arg(long, value_name = "SHELL")]
+    completions: Option<Shell>,
 }
 
 fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     let args = Args::parse();
+
+    if let Some(shell) = args.completions {
+        let mut cmd = Args::command();
+        clap_complete::generate(shell, &mut cmd, "clockie", &mut std::io::stdout());
+        return Ok(());
+    }
 
     let config_path = args.config.unwrap_or_else(config::default_config_path);
     let mut config = config::load_config(&config_path)?;
@@ -83,6 +95,7 @@ fn main() -> Result<()> {
     config.timezone.truncate(2);
 
     log::info!("Starting clockie with face={:?}, compact={}", config.clock.face, config.window.compact);
+    log::info!("Content sizing: font_size={}, diameter={}", config.clock.font_size, config.clock.diameter);
 
     wayland::run(config, config_path, args.socket)?;
 

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::Shell;
 use serde_json::json;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
@@ -28,7 +29,7 @@ enum Commands {
         /// on, off, or toggle
         mode: String,
     },
-    /// Set widget size (W H) or resize proportionally (+N / -N)
+    /// Set font size (digital) or diameter (analogue), or scale by +/-N
     Size {
         args: Vec<String>,
     },
@@ -36,8 +37,23 @@ enum Commands {
     Reload,
     /// Print current state as JSON
     State,
+    /// Control drag lock
+    Lock {
+        /// on, off, or toggle
+        mode: String,
+    },
+    /// Move clock to a specific output (monitor name, "next", or "prev")
+    Output {
+        /// Output name (e.g. HDMI-A-1), or "next"/"prev" to cycle
+        name: String,
+    },
     /// Shut down clockie
     Quit,
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
 }
 
 fn socket_path(override_path: Option<&PathBuf>) -> PathBuf {
@@ -71,6 +87,14 @@ fn send_command(socket: &PathBuf, cmd: serde_json::Value) -> Result<serde_json::
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Handle completions before connecting to socket
+    if let Commands::Completions { shell } = &cli.command {
+        let mut cmd = Cli::command();
+        clap_complete::generate(*shell, &mut cmd, "clockiectl", &mut std::io::stdout());
+        return Ok(());
+    }
+
     let sock = socket_path(cli.socket.as_ref());
 
     let cmd = match &cli.command {
@@ -87,25 +111,46 @@ fn main() -> Result<()> {
             other => anyhow::bail!("Unknown compact mode: {}. Use on, off, or toggle", other),
         },
         Commands::Size { args } => {
-            if args.len() == 2 {
-                let w: u32 = args[0].parse().context("Invalid width")?;
-                let h: u32 = args[1].parse().context("Invalid height")?;
-                json!({"cmd": "set-size", "width": w, "height": h})
-            } else if args.len() == 1 {
+            if args.len() == 1 {
                 let s = &args[0];
                 if s.starts_with('+') || s.starts_with('-') {
                     let delta: i32 = s.parse().context("Invalid delta")?;
-                    json!({"cmd": "resize-by", "delta": delta})
+                    json!({"cmd": "scale-by", "delta": delta})
                 } else {
-                    anyhow::bail!("Size requires either W H or +/-N");
+                    // Try as font-size (float) or diameter (integer)
+                    if let Ok(size) = s.parse::<f32>() {
+                        json!({"cmd": "set-font-size", "size": size})
+                    } else {
+                        anyhow::bail!("Invalid size value: {}", s);
+                    }
+                }
+            } else if args.len() == 2 {
+                match args[0].as_str() {
+                    "font" => {
+                        let size: f32 = args[1].parse().context("Invalid font size")?;
+                        json!({"cmd": "set-font-size", "size": size})
+                    }
+                    "diameter" => {
+                        let d: u32 = args[1].parse().context("Invalid diameter")?;
+                        json!({"cmd": "set-diameter", "diameter": d})
+                    }
+                    _ => anyhow::bail!("Size requires: <value>, +/-N, font <size>, or diameter <px>"),
                 }
             } else {
-                anyhow::bail!("Size requires either W H or +/-N");
+                anyhow::bail!("Size requires: <value>, +/-N, font <size>, or diameter <px>");
             }
         },
+        Commands::Lock { mode } => match mode.as_str() {
+            "on" => json!({"cmd": "set-locked", "locked": true}),
+            "off" => json!({"cmd": "set-locked", "locked": false}),
+            "toggle" => json!({"cmd": "toggle-locked"}),
+            other => anyhow::bail!("Unknown lock mode: {}. Use on, off, or toggle", other),
+        },
+        Commands::Output { name } => json!({"cmd": "move-to-output", "name": name}),
         Commands::Reload => json!({"cmd": "reload-config"}),
         Commands::State => json!({"cmd": "get-state"}),
         Commands::Quit => json!({"cmd": "quit"}),
+        Commands::Completions { .. } => unreachable!("handled above"),
     };
 
     let resp = send_command(&sock, cmd)?;

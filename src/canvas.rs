@@ -301,9 +301,19 @@ fn blend_pixel(pixmap: &mut Pixmap, x: u32, y: u32, color: [u8; 4], alpha: u8) {
     data[idx + 3] = (a + data[idx + 3] as u32 * inv_a / 255).min(255) as u8;
 }
 
+fn expand_tilde(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return format!("{}/{}", home, rest);
+        }
+    }
+    path.to_string()
+}
+
 pub fn load_image(path: &str) -> Option<Pixmap> {
     if path.is_empty() { return None; }
-    let img = image::open(path).ok()?.to_rgba8();
+    let expanded = expand_tilde(path);
+    let img = image::open(&expanded).ok()?.to_rgba8();
     let (w, h) = img.dimensions();
     let mut pixmap = Pixmap::new(w, h)?;
     // image crate gives RGBA, tiny-skia premultiplied RGBA

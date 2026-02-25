@@ -7,21 +7,31 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     let config = &state.config;
     let theme = &config.theme;
 
-    // Calculate timezone area
-    let tz_count = config.timezone.len().min(2);
-    let tz_area_ratio = if tz_count > 0 { 0.2 } else { 0.0 };
-    let clock_area_h = h * (1.0 - tz_area_ratio);
-
     // Clear background
     canvas.clear(theme.bg_color);
 
-    // Square clock area, centred with letterboxing
-    let clock_size = w.min(clock_area_h);
+    let diameter = config.clock.diameter as f32;
+    let effective = if state.compact { diameter * 0.75 } else { diameter };
+    let radius = effective / 2.0;
+    let _pad = 12.0;
+
+    // Subclock area height
+    let subclock_h = if !config.timezone.is_empty() {
+        let base = diameter * 0.25;
+        let pad_y = base * 0.25;
+        let sc_label_size = base * 0.22;
+        let sc_time_size = sc_label_size * 1.3;
+        let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
+        let sc_sep_gap = pad_y * 0.5;
+        sc_sep_gap + sc_row_h + sc_sep_gap
+    } else {
+        0.0
+    };
+
+    // Clock area is total height minus subclock area
+    let clock_area_h = h - subclock_h;
     let cx = w / 2.0;
     let cy = clock_area_h / 2.0;
-    let radius = (clock_size / 2.0) * 0.9;
-    let compact = state.compact;
-    let radius = if compact { radius * 0.75 } else { radius };
 
     // Draw face image or procedural face
     if !config.background.analogue_face_image.is_empty() {
@@ -45,7 +55,7 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     let min_angle = min * 6.0;
     let hr_angle = hr * 30.0;
 
-    let hand_scale = if compact { 0.8 } else { 1.0 };
+    let hand_scale = if state.compact { 0.8 } else { 1.0 };
 
     // Hour hand
     draw_hand(canvas, cx, cy, hr_angle, radius * 0.55 * hand_scale, radius * 0.06, theme.hour_hand_color);

@@ -34,6 +34,7 @@ toml = "0.8"
 
 # CLI
 clap = { version = "4", features = ["derive"] }
+clap_complete = "4"
 
 # Event loop
 calloop = "0.14"

@@ -22,59 +22,52 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     }
 
     let compact = state.compact;
-    let padding = w * 0.05; // 5% horizontal padding
-
-    // Calculate timezone row count for layout
-    let tz_count = config.timezone.len().min(2);
-    let tz_area_ratio = if tz_count > 0 { 0.2 } else { 0.0 };
-
-    // Calculate available height for main clock area
-    let clock_area_h = h * (1.0 - tz_area_ratio);
-    let available_w = w - padding * 2.0;
+    let font_size = config.clock.font_size;
+    let time_size = if compact { font_size * 0.7 } else { font_size };
+    let pad_y = time_size * 0.25;
 
     // Time text
     let time_str = state.time.format_time(config.clock.hour_format, config.clock.show_seconds);
     let suffix = state.time.format_time_suffix(config.clock.hour_format);
     let full_time = format!("{}{}", time_str, suffix);
 
-    // Start with height-based size, then constrain to width
-    let time_size_by_h = if compact {
-        clock_area_h * 0.35
-    } else {
-        clock_area_h * 0.45
-    };
-    let time_size = fit_text_size(font, &full_time, time_size_by_h, available_w);
-
-    // Measure and center time text
+    // Measure and centre time text
     let (tw, _) = font.measure_text(&full_time, time_size);
     let time_x = (w - tw) / 2.0;
 
-    let time_y = if config.clock.show_date && !compact {
-        clock_area_h * 0.2
+    // Date sizing
+    let date_size = if config.clock.show_date && !compact { time_size * 0.25 } else { 0.0 };
+    let date_gap = if date_size > 0.0 { time_size * 0.15 } else { 0.0 };
+
+    // Battery offset
+    let battery_h = if config.battery.enabled { time_size * 0.35 } else { 0.0 };
+    let battery_gap = if battery_h > 0.0 { pad_y * 0.5 } else { 0.0 };
+
+    // Subclock area height
+    let subclock_h = if !config.timezone.is_empty() {
+        let sc_label_size = time_size * 0.22;
+        let sc_time_size = sc_label_size * 1.3;
+        let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
+        let sc_sep_gap = pad_y * 0.5;
+        sc_sep_gap + sc_row_h + sc_sep_gap
     } else {
-        (clock_area_h - time_size) / 2.0
+        0.0
     };
+
+    // Clock area is total height minus subclock area
+    let clock_area_h = h - subclock_h;
+
+    // Content height within clock area
+    let content_h = battery_h + battery_gap + time_size + date_gap + date_size;
+    let time_y = (clock_area_h - content_h) / 2.0 + battery_h + battery_gap;
 
     font.draw_text(canvas, &full_time, time_x, time_y, time_size, theme.fg_color);
 
     // Date string
     if config.clock.show_date && !compact {
-        let date_size_target = time_size * 0.25;
-        let date_size = fit_text_size(font, &state.time.date_string, date_size_target, available_w);
         let (dw, _) = font.measure_text(&state.time.date_string, date_size);
         let date_x = (w - dw) / 2.0;
-        let date_y = time_y + time_size * 1.15;
+        let date_y = time_y + time_size + date_gap;
         font.draw_text(canvas, &state.time.date_string, date_x, date_y, date_size, theme.fg_color);
     }
-}
-
-/// Scale font size down until text fits within max_width
-fn fit_text_size(font: &FontState, text: &str, initial_size: f32, max_width: f32) -> f32 {
-    let size = initial_size.max(10.0);
-    let (tw, _) = font.measure_text(text, size);
-    if tw <= max_width {
-        return size;
-    }
-    // Scale proportionally
-    (size * max_width / tw).max(10.0)
 }

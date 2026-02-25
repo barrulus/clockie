@@ -1,4 +1,5 @@
 use crate::canvas::{Canvas, FontState};
+use crate::config::FaceMode;
 use crate::renderer::ClockState;
 use crate::time_utils;
 
@@ -11,19 +12,36 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     let timezones: Vec<_> = config.timezone.iter().take(2).collect();
     if timezones.is_empty() { return; }
 
-    let tz_area_h = h * 0.2;
+    // Derive base size from face mode
+    let base = match config.clock.face {
+        FaceMode::Digital => {
+            let font_size = config.clock.font_size;
+            if state.compact { font_size * 0.7 } else { font_size }
+        }
+        FaceMode::Analogue => config.clock.diameter as f32 * 0.25,
+    };
+
+    let pad_y = base * 0.25;
+    let sc_label_size = base * 0.22;
+    let sc_time_size = sc_label_size * 1.3;
+    let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
+    let sc_sep_gap = pad_y * 0.5;
+    let tz_area_h = sc_sep_gap + sc_row_h + sc_sep_gap;
     let tz_y_start = h - tz_area_h;
 
     // Draw separator line
-    canvas.draw_line(w * 0.1, tz_y_start, w * 0.9, tz_y_start, theme.fg_color, 1.0);
+    let sep_color = [theme.fg_color[0], theme.fg_color[1], theme.fg_color[2], 0x66];
+    canvas.draw_line(w * 0.05, tz_y_start, w * 0.95, tz_y_start, sep_color, 1.0);
 
-    let row_h = tz_area_h / timezones.len() as f32;
-    let label_size = if state.compact { h * 0.06 } else { h * 0.08 };
-    let label_size = label_size.max(10.0).min(24.0);
-    let time_size = label_size * 1.2;
+    let tz_count = timezones.len();
+    let col_w = w / tz_count as f32;
+
+    // Vertically centre the label+time block within the tz area
+    let content_h = sc_label_size + sc_time_size;
+    let y_offset = tz_y_start + (tz_area_h - content_h) / 2.0;
 
     for (i, tz) in timezones.iter().enumerate() {
-        let row_y = tz_y_start + row_h * i as f32 + row_h * 0.3;
+        let col_cx = col_w * i as f32 + col_w / 2.0;
 
         let time_str = time_utils::timezone_time(
             &tz.tz,
@@ -31,16 +49,15 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
             config.clock.show_seconds,
         ).unwrap_or_else(|| "??:??".into());
 
-        let label_text = format!("{}  ", tz.label);
-        let (lw, _) = font.measure_text(&label_text, label_size);
-        let (tw, _) = font.measure_text(&time_str, time_size);
-
-        let total_w = lw + tw;
-        let start_x = (w - total_w) / 2.0;
-
-        // Muted color for label
         let label_color = [theme.fg_color[0], theme.fg_color[1], theme.fg_color[2], 0xAA];
-        font.draw_text(canvas, &label_text, start_x, row_y, label_size, label_color);
-        font.draw_text(canvas, &time_str, start_x + lw, row_y, time_size, theme.fg_color);
+
+        let (lw, _) = font.measure_text(&tz.label, sc_label_size);
+        let label_x = col_cx - lw / 2.0;
+        font.draw_text(canvas, &tz.label, label_x, y_offset, sc_label_size, label_color);
+
+        let (tw, _) = font.measure_text(&time_str, sc_time_size);
+        let time_x = col_cx - tw / 2.0;
+        let time_y = y_offset + sc_label_size * 1.1;
+        font.draw_text(canvas, &time_str, time_x, time_y, sc_time_size, theme.fg_color);
     }
 }

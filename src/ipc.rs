@@ -11,8 +11,12 @@ pub enum IpcCommand {
     ToggleFace,
     SetCompact { compact: bool },
     ToggleCompact,
-    SetSize { width: u32, height: u32 },
-    ResizeBy { delta: i32 },
+    SetFontSize { size: f32 },
+    SetDiameter { diameter: u32 },
+    ScaleBy { delta: i32 },
+    SetLocked { locked: bool },
+    ToggleLocked,
+    MoveToOutput { name: String },
     ReloadConfig,
     GetState,
     Quit,
@@ -33,19 +37,27 @@ pub struct IpcResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub height: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diameter: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub config_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output: Option<String>,
 }
 
 impl IpcResponse {
     pub fn ok() -> Self {
-        Self { ok: true, error: None, face: None, compact: None, width: None, height: None, config_path: None }
+        Self { ok: true, error: None, face: None, compact: None, width: None, height: None, font_size: None, diameter: None, config_path: None, locked: None, output: None }
     }
 
     pub fn err(msg: impl Into<String>) -> Self {
-        Self { ok: false, error: Some(msg.into()), face: None, compact: None, width: None, height: None, config_path: None }
+        Self { ok: false, error: Some(msg.into()), face: None, compact: None, width: None, height: None, font_size: None, diameter: None, config_path: None, locked: None, output: None }
     }
 
-    pub fn state(face: &str, compact: bool, width: u32, height: u32, config_path: &str) -> Self {
+    pub fn state(face: &str, compact: bool, width: u32, height: u32, font_size: f32, diameter: u32, config_path: &str, locked: bool, output: Option<&str>) -> Self {
         Self {
             ok: true,
             error: None,
@@ -53,7 +65,11 @@ impl IpcResponse {
             compact: Some(compact),
             width: Some(width),
             height: Some(height),
+            font_size: Some(font_size),
+            diameter: Some(diameter),
             config_path: Some(config_path.into()),
+            locked: Some(locked),
+            output: output.map(|s| s.into()),
         }
     }
 }

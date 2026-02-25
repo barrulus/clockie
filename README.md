@@ -14,6 +14,18 @@ A lightweight Wayland layer-shell desktop clock widget written in Rust. Renders 
 - **IPC control** via Unix socket (`clockiectl`)
 - **TOML configuration** with sensible defaults generated on first run
 
+![Analogue 1](docs/images/analogue1.png)
+*Running as an analogue custom image clock face*
+
+![Digital 1](docs/images/digital1.png)
+*Running as a digital custom clock face*
+
+As it is a layer, it carries over the overview.
+
+![Overview 1](docs/images/analogue-overview.png)
+
+![Overview 2](docs/images/digital-overview.png)
+
 ## Requirements
 
 - A Wayland compositor with `wlr-layer-shell-unstable-v1` support (e.g. Sway, Hyprland, niri, river)

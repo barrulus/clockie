@@ -66,7 +66,7 @@ binds {
     Alt+Right { spawn "clockiectl" "lock" "toggle"; }
     // Scale up / down
     Alt+Equal { spawn "clockiectl" "size" "+10"; }
-    Alt+Minus { spawn "clockiectl" "size" "-10"; }
+    Alt+Minus { spawn "clockiectl" "size" "--" "-10"; }
     // Gallery: next / previous image
     Alt+BracketRight { spawn "clockiectl" "gallery" "next"; }
     Alt+BracketLeft { spawn "clockiectl" "gallery" "prev"; }

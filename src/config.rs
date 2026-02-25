@@ -2,6 +2,86 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::path::PathBuf;
 
+/// A gallery source: either a folder path (all images inside are used) or an
+/// explicit ordered list of image file paths.
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum GallerySetting {
+    /// Path to a directory — every image file inside will be included, sorted.
+    Dir(String),
+    /// Explicit list of image paths.
+    Images(Vec<String>),
+}
+
+impl<'de> Deserialize<'de> for GallerySetting {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct Visitor;
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = GallerySetting;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a directory path string or an array of image path strings")
+            }
+            fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Self::Value, E> {
+                Ok(GallerySetting::Dir(v.to_string()))
+            }
+            fn visit_string<E: serde::de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(GallerySetting::Dir(v))
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                let mut v = Vec::new();
+                while let Some(s) = seq.next_element::<String>()? { v.push(s); }
+                Ok(GallerySetting::Images(v))
+            }
+        }
+        deserializer.deserialize_any(Visitor)
+    }
+}
+
+fn expand_tilde_path(path: &str) -> String {
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            return format!("{}/{}", home, rest);
+        }
+    }
+    path.to_string()
+}
+
+fn discover_images_in_dir(dir: &str) -> Vec<String> {
+    const EXTS: &[&str] = &["png", "jpg", "jpeg", "webp"];
+    let mut images: Vec<String> = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
+                if EXTS.iter().any(|x| x.eq_ignore_ascii_case(ext)) {
+                    images.push(p.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+    images.sort();
+    images
+}
+
+impl GallerySetting {
+    /// Resolve to an ordered list of absolute image paths.
+    pub fn resolve(&self) -> Vec<String> {
+        match self {
+            GallerySetting::Images(v) => v.clone(),
+            GallerySetting::Dir(path) => {
+                let expanded = expand_tilde_path(path);
+                let p = std::path::Path::new(&expanded);
+                if p.is_dir() {
+                    discover_images_in_dir(&expanded)
+                } else {
+                    // Graceful fallback: treat as a single image file
+                    vec![path.clone()]
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClockConfig {
     #[serde(default)]
@@ -91,10 +171,12 @@ pub struct BackgroundConfig {
     pub analogue_face_image: String,
     #[serde(default = "default_image_scale")]
     pub image_scale: String,
+    /// Gallery source for digital mode: a folder path or an explicit list of image paths.
     #[serde(default)]
-    pub digital_images: Vec<String>,
+    pub digital_gallery: Option<GallerySetting>,
+    /// Gallery source for analogue mode: a folder path or an explicit list of image paths.
     #[serde(default)]
-    pub analogue_face_images: Vec<String>,
+    pub analogue_gallery: Option<GallerySetting>,
     #[serde(default)]
     pub gallery_interval: u64,
 }
@@ -222,8 +304,8 @@ impl Default for BackgroundConfig {
             digital_image: String::new(),
             analogue_face_image: String::new(),
             image_scale: default_image_scale(),
-            digital_images: Vec::new(),
-            analogue_face_images: Vec::new(),
+            digital_gallery: None,
+            analogue_gallery: None,
             gallery_interval: 0,
         }
     }
@@ -231,11 +313,13 @@ impl Default for BackgroundConfig {
 
 impl BackgroundConfig {
     /// Return the effective list of digital background images.
-    /// Uses `digital_images` if non-empty, else wraps `digital_image` into a vec (if non-empty).
+    /// Resolves `digital_gallery` if set, else falls back to `digital_image`.
     pub fn effective_digital_images(&self) -> Vec<String> {
-        if !self.digital_images.is_empty() {
-            self.digital_images.clone()
-        } else if !self.digital_image.is_empty() {
+        if let Some(gallery) = &self.digital_gallery {
+            let images = gallery.resolve();
+            if !images.is_empty() { return images; }
+        }
+        if !self.digital_image.is_empty() {
             vec![self.digital_image.clone()]
         } else {
             Vec::new()
@@ -243,11 +327,13 @@ impl BackgroundConfig {
     }
 
     /// Return the effective list of analogue face images.
-    /// Uses `analogue_face_images` if non-empty, else wraps `analogue_face_image` into a vec (if non-empty).
+    /// Resolves `analogue_gallery` if set, else falls back to `analogue_face_image`.
     pub fn effective_analogue_face_images(&self) -> Vec<String> {
-        if !self.analogue_face_images.is_empty() {
-            self.analogue_face_images.clone()
-        } else if !self.analogue_face_image.is_empty() {
+        if let Some(gallery) = &self.analogue_gallery {
+            let images = gallery.resolve();
+            if !images.is_empty() { return images; }
+        }
+        if !self.analogue_face_image.is_empty() {
             vec![self.analogue_face_image.clone()]
         } else {
             Vec::new()
@@ -411,9 +497,11 @@ digital_image = ""
 analogue_face_image = ""
 # Scale mode: "fill" | "fit" | "stretch" | "center"
 image_scale = "fill"
-# Gallery: multiple images to cycle through (overrides single-image fields when non-empty)
-# digital_images = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
-# analogue_face_images = ["~/faces/classic.png", "~/faces/minimal.png"]
+# Gallery: a folder path (all images inside) or an explicit list of paths
+# digital_gallery = "~/wallpapers/"
+# digital_gallery = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
+# analogue_gallery = "~/.config/clockie/faces/analogue/"
+# analogue_gallery = ["~/faces/classic.png", "~/faces/minimal.png"]
 # Auto-rotate interval in seconds (0 = disabled)
 # gallery_interval = 300
 

@@ -129,7 +129,7 @@ clockiectl gallery stop                # stop auto-rotate
 clockiectl gallery interval 10         # set rotate interval to 10 seconds
 ```
 
-Requires `digital_images` or `analogue_face_images` to be configured in `[background]`. See [Configuration](configuration.md#background) for details.
+Requires `digital_gallery` or `analogue_gallery` to be configured in `[background]`. See [Configuration](configuration.md#background) for details.
 
 ### reload
 

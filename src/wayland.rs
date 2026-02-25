@@ -404,15 +404,61 @@ impl Clockie {
     }
 
     /// Recompute window size from content and apply if changed.
+    /// Clamps margins so the window stays within the current output.
     fn update_size(&mut self) {
         let (new_w, new_h) = renderer::compute_size(&self.config, &self.font, self.compact);
         if new_w != self.width || new_h != self.height {
             self.width = new_w;
             self.height = new_h;
             self.layer_surface.set_size(self.width, self.height);
+
+            // Clamp margins so the window doesn't overflow the output
+            self.clamp_margins();
+
+            self.layer_surface.set_margin(
+                self.config.window.margin_top,
+                self.config.window.margin_right,
+                self.config.window.margin_bottom,
+                self.config.window.margin_left,
+            );
             self.layer_surface.wl_surface().commit();
         }
         self.needs_redraw = true;
+    }
+
+    /// Clamp margins so the window fits within the current output bounds.
+    fn clamp_margins(&mut self) {
+        let (out_w, out_h) = self.current_output.as_ref()
+            .and_then(|o| self.output_state.info(o))
+            .and_then(|info| info.logical_size)
+            .unwrap_or((0, 0));
+
+        if out_w == 0 || out_h == 0 {
+            return;
+        }
+
+        let has_left = self.anchor.contains(Anchor::LEFT);
+        let has_right = self.anchor.contains(Anchor::RIGHT);
+        let has_top = self.anchor.contains(Anchor::TOP);
+        let has_bottom = self.anchor.contains(Anchor::BOTTOM);
+
+        // Horizontal: margin_left + width + margin_right <= output_width
+        if has_left && !has_right {
+            let max = (out_w as u32).saturating_sub(self.width) as i32;
+            self.config.window.margin_left = self.config.window.margin_left.clamp(0, max);
+        } else if has_right && !has_left {
+            let max = (out_w as u32).saturating_sub(self.width) as i32;
+            self.config.window.margin_right = self.config.window.margin_right.clamp(0, max);
+        }
+
+        // Vertical: margin_top + height + margin_bottom <= output_height
+        if has_top && !has_bottom {
+            let max = (out_h as u32).saturating_sub(self.height) as i32;
+            self.config.window.margin_top = self.config.window.margin_top.clamp(0, max);
+        } else if has_bottom && !has_top {
+            let max = (out_h as u32).saturating_sub(self.height) as i32;
+            self.config.window.margin_bottom = self.config.window.margin_bottom.clamp(0, max);
+        }
     }
 
     fn draw(&mut self, qh: &QueueHandle<Self>) {

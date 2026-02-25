@@ -74,6 +74,7 @@ On first run, a default config file is generated at `~/.config/clockie/config.to
 - [CLI usage](docs/cli.md) -- `clockie` and `clockiectl` commands
 - [IPC protocol](docs/ipc.md) -- JSON socket protocol for programmatic control
 - [Multi-monitor](docs/multi-monitor.md) -- cross-monitor drag and output switching
+- [Compositor integration](docs/compositor-integration.md) -- Hyprland, niri, Mango, and Sway examples
 - [Architecture](docs/architecture.md) -- module structure and rendering pipeline
 
 ## Tips

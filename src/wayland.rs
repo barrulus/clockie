@@ -497,12 +497,15 @@ impl Clockie {
 
         renderer::render(&mut canvas, &state, &self.font);
 
-        // Apply window opacity
+        // Apply window opacity (scale all channels — data is premultiplied RGBA)
         let opacity = self.config.window.opacity;
         if opacity < 1.0 {
             let data = canvas.pixmap.data_mut();
             let scale = (opacity * 255.0) as u32;
             for i in (0..data.len()).step_by(4) {
+                data[i]     = ((data[i]     as u32 * scale) / 255) as u8;
+                data[i + 1] = ((data[i + 1] as u32 * scale) / 255) as u8;
+                data[i + 2] = ((data[i + 2] as u32 * scale) / 255) as u8;
                 data[i + 3] = ((data[i + 3] as u32 * scale) / 255) as u8;
             }
         }

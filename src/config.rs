@@ -243,89 +243,59 @@ fn dirs_path() -> PathBuf {
     base.join("clockie")
 }
 
-pub fn save_margins_to_config(path: &std::path::Path, top: i32, right: i32, bottom: i32, left: i32) {
+/// Read and parse the config file as a toml_edit document, preserving formatting and comments.
+fn read_config_doc(path: &std::path::Path) -> Option<toml_edit::DocumentMut> {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
-            log::warn!("Failed to read config for margin save: {}", e);
-            return;
+            log::warn!("Failed to read config: {}", e);
+            return None;
         }
     };
-
-    let mut doc: toml::Value = match content.parse() {
-        Ok(v) => v,
+    match content.parse::<toml_edit::DocumentMut>() {
+        Ok(doc) => Some(doc),
         Err(e) => {
-            log::warn!("Failed to parse config for margin save: {}", e);
-            return;
+            log::warn!("Failed to parse config: {}", e);
+            None
         }
-    };
-
-    if let Some(window) = doc.get_mut("window").and_then(|w| w.as_table_mut()) {
-        window.insert("margin_top".into(), toml::Value::Integer(top as i64));
-        window.insert("margin_right".into(), toml::Value::Integer(right as i64));
-        window.insert("margin_bottom".into(), toml::Value::Integer(bottom as i64));
-        window.insert("margin_left".into(), toml::Value::Integer(left as i64));
-    } else {
-        // No [window] table — create one with just margins
-        let mut window = toml::map::Map::new();
-        window.insert("margin_top".into(), toml::Value::Integer(top as i64));
-        window.insert("margin_right".into(), toml::Value::Integer(right as i64));
-        window.insert("margin_bottom".into(), toml::Value::Integer(bottom as i64));
-        window.insert("margin_left".into(), toml::Value::Integer(left as i64));
-        if let Some(root) = doc.as_table_mut() {
-            root.insert("window".into(), toml::Value::Table(window));
-        }
-    }
-
-    match toml::to_string_pretty(&doc) {
-        Ok(output) => {
-            if let Err(e) = std::fs::write(path, output) {
-                log::warn!("Failed to write config margins: {}", e);
-            } else {
-                log::info!("Persisted margins to {}", path.display());
-            }
-        }
-        Err(e) => log::warn!("Failed to serialize config: {}", e),
     }
 }
 
+/// Write a toml_edit document back to disk, preserving formatting.
+fn write_config_doc(path: &std::path::Path, doc: &toml_edit::DocumentMut) {
+    if let Err(e) = std::fs::write(path, doc.to_string()) {
+        log::warn!("Failed to write config: {}", e);
+    }
+}
+
+/// Ensure a [window] table exists in the document, creating one if needed.
+fn ensure_window_table(doc: &mut toml_edit::DocumentMut) {
+    if !doc.contains_key("window") {
+        doc["window"] = toml_edit::Item::Table(toml_edit::Table::new());
+    }
+}
+
+pub fn save_margins_to_config(path: &std::path::Path, top: i32, right: i32, bottom: i32, left: i32) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_window_table(&mut doc);
+
+    doc["window"]["margin_top"] = toml_edit::value(top as i64);
+    doc["window"]["margin_right"] = toml_edit::value(right as i64);
+    doc["window"]["margin_bottom"] = toml_edit::value(bottom as i64);
+    doc["window"]["margin_left"] = toml_edit::value(left as i64);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted margins to {}", path.display());
+}
+
 pub fn save_output_to_config(path: &std::path::Path, output_name: &str) {
-    let content = match std::fs::read_to_string(path) {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!("Failed to read config for output save: {}", e);
-            return;
-        }
-    };
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_window_table(&mut doc);
 
-    let mut doc: toml::Value = match content.parse() {
-        Ok(v) => v,
-        Err(e) => {
-            log::warn!("Failed to parse config for output save: {}", e);
-            return;
-        }
-    };
+    doc["window"]["output"] = toml_edit::value(output_name);
 
-    if let Some(window) = doc.get_mut("window").and_then(|w| w.as_table_mut()) {
-        window.insert("output".into(), toml::Value::String(output_name.into()));
-    } else {
-        let mut window = toml::map::Map::new();
-        window.insert("output".into(), toml::Value::String(output_name.into()));
-        if let Some(root) = doc.as_table_mut() {
-            root.insert("window".into(), toml::Value::Table(window));
-        }
-    }
-
-    match toml::to_string_pretty(&doc) {
-        Ok(output) => {
-            if let Err(e) = std::fs::write(path, output) {
-                log::warn!("Failed to write config output: {}", e);
-            } else {
-                log::info!("Persisted output to {}", path.display());
-            }
-        }
-        Err(e) => log::warn!("Failed to serialize config: {}", e),
-    }
+    write_config_doc(path, &doc);
+    log::info!("Persisted output to {}", path.display());
 }
 
 pub fn load_config(path: &std::path::Path) -> Result<ClockConfig> {

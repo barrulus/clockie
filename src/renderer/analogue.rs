@@ -1,7 +1,8 @@
 use crate::canvas::{self, Canvas, FontState};
-use crate::renderer::ClockState;
+use crate::renderer::{ClockState, SubclockSizing};
 
-pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
+/// Render the analogue clock background: clear + face image or procedural face.
+pub fn render_background(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     let w = canvas.width() as f32;
     let h = canvas.height() as f32;
     let config = &state.config;
@@ -13,17 +14,10 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     let diameter = config.clock.diameter as f32;
     let effective = if state.compact { diameter * 0.75 } else { diameter };
     let radius = effective / 2.0;
-    let _pad = 12.0;
 
     // Subclock area height
     let subclock_h = if !config.timezone.is_empty() {
-        let base = diameter * 0.25;
-        let pad_y = base * 0.25;
-        let sc_label_size = base * 0.22;
-        let sc_time_size = sc_label_size * 1.3;
-        let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
-        let sc_sep_gap = pad_y * 0.5;
-        sc_sep_gap + sc_row_h + sc_sep_gap
+        SubclockSizing::from_base(diameter * 0.25).area_h
     } else {
         0.0
     };
@@ -45,6 +39,29 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     } else {
         draw_procedural_face(canvas, cx, cy, radius, theme);
     }
+}
+
+/// Render the analogue clock foreground: hands and centre boss.
+pub fn render_foreground(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
+    let w = canvas.width() as f32;
+    let h = canvas.height() as f32;
+    let config = &state.config;
+    let theme = &config.theme;
+
+    let diameter = config.clock.diameter as f32;
+    let effective = if state.compact { diameter * 0.75 } else { diameter };
+    let radius = effective / 2.0;
+
+    // Subclock area height
+    let subclock_h = if !config.timezone.is_empty() {
+        SubclockSizing::from_base(diameter * 0.25).area_h
+    } else {
+        0.0
+    };
+
+    let clock_area_h = h - subclock_h;
+    let cx = w / 2.0;
+    let cy = clock_area_h / 2.0;
 
     // Draw hands
     let sec = state.time.second as f32;
@@ -65,7 +82,7 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     draw_hand(canvas, cx, cy, sec_angle, radius * 0.85 * hand_scale, radius * 0.02, theme.second_hand_color);
 
     // Centre boss
-    canvas.draw_circle(cx, cy, radius * 0.05, theme.fg_color, true, 0.0);
+    canvas.draw_circle(cx, cy, radius * 0.05, state.contrast.text_color, true, 0.0);
 }
 
 fn draw_procedural_face(canvas: &mut Canvas, cx: f32, cy: f32, radius: f32, theme: &crate::config::ThemeConfig) {

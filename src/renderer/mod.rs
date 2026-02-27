@@ -100,7 +100,7 @@ fn compute_digital_size(config: &ClockConfig, font: &FontState, compact: bool) -
     let battery_gap = if battery_h > 0.0 { pad_y * 0.5 } else { 0.0 };
 
     // Subclocks
-    let (subclock_w, subclock_h) = compute_subclock_size(config, font, time_size, pad_y);
+    let (subclock_w, subclock_h) = compute_subclock_size(config, font, time_size, pad_y, compact);
 
     let width = time_w.max(date_w).max(subclock_w) + pad_x * 2.0;
     let height = pad_y + battery_h + battery_gap + time_size + date_gap + date_size + subclock_h + pad_y;
@@ -115,7 +115,7 @@ fn compute_analogue_size(config: &ClockConfig, font: &FontState, compact: bool) 
 
     let base = diameter * 0.25;
     let pad_y = base * 0.25;
-    let (subclock_w, subclock_h) = compute_subclock_size(config, font, base, pad_y);
+    let (subclock_w, subclock_h) = compute_subclock_size(config, font, base, pad_y, compact);
 
     let width = effective.max(subclock_w) + pad * 2.0;
     let height = effective + subclock_h + pad * 2.0;
@@ -123,7 +123,8 @@ fn compute_analogue_size(config: &ClockConfig, font: &FontState, compact: bool) 
     (width.ceil() as u32, height.ceil() as u32)
 }
 
-fn compute_subclock_size(config: &ClockConfig, font: &FontState, base: f32, _pad_y: f32) -> (f32, f32) {
+fn compute_subclock_size(config: &ClockConfig, font: &FontState, base: f32, _pad_y: f32, compact: bool) -> (f32, f32) {
+    if compact { return (0.0, 0.0); }
     let tz_count = config.timezone.len().min(2);
     if tz_count == 0 {
         return (0.0, 0.0);
@@ -139,9 +140,16 @@ fn compute_subclock_size(config: &ClockConfig, font: &FontState, base: f32, _pad
         .map(|tz| font.measure_text(&tz.label, sz.label_size).0)
         .fold(0.0f32, f32::max);
     let sc_col_w = sc_time_w.max(max_label_w) + base * 0.2;
-    let subclock_w = sc_col_w * tz_count as f32;
 
-    (subclock_w, sz.area_h)
+    // Analogue full mode: stack vertically (one per row)
+    let stacked = matches!(config.clock.face, FaceMode::Analogue);
+    if stacked {
+        let subclock_h = sz.area_h * tz_count as f32;
+        (sc_col_w, subclock_h)
+    } else {
+        let subclock_w = sc_col_w * tz_count as f32;
+        (subclock_w, sz.area_h)
+    }
 }
 
 fn widest_time_string(config: &ClockConfig) -> String {

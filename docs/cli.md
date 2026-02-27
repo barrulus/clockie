@@ -70,7 +70,7 @@ clockiectl compact off     # disable compact mode
 clockiectl compact toggle  # toggle
 ```
 
-Compact mode reduces the time text to 70% of `font_size` (digital) or the face to 75% of `diameter` (analogue), and hides the date line.
+Compact mode reduces the time text to 70% of `font_size` (digital) or the face to 75% of `diameter` (analogue), hides the date line, and hides timezone sub-clocks.
 
 ### lock
 

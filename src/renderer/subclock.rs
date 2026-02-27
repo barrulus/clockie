@@ -4,6 +4,8 @@ use crate::renderer::{ClockState, SubclockSizing, draw_contrast_text};
 use crate::time_utils;
 
 pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
+    if state.compact { return; }
+
     let w = canvas.width() as f32;
     let h = canvas.height() as f32;
     let config = &state.config;
@@ -21,23 +23,19 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     };
 
     let sz = SubclockSizing::from_base(base);
-    let tz_y_start = h - sz.area_h;
+    let stacked = matches!(config.clock.face, FaceMode::Analogue);
+    let total_area_h = if stacked { sz.area_h * timezones.len() as f32 } else { sz.area_h };
+    let tz_y_start = h - total_area_h;
 
     // Draw separator line
     let tc = state.contrast.text_color;
     let sep_color = [tc[0], tc[1], tc[2], 0x66];
     canvas.draw_line(w * 0.05, tz_y_start, w * 0.95, tz_y_start, sep_color, 1.0);
 
-    let tz_count = timezones.len();
-    let col_w = w / tz_count as f32;
-
-    // Vertically centre the label+time block within the tz area
     let content_h = sz.label_size + sz.time_size;
-    let y_offset = tz_y_start + (sz.area_h - content_h) / 2.0;
+    let cx = w / 2.0;
 
     for (i, tz) in timezones.iter().enumerate() {
-        let col_cx = col_w * i as f32 + col_w / 2.0;
-
         let time_str = time_utils::timezone_time(
             &tz.tz,
             config.clock.hour_format,
@@ -45,6 +43,18 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
         ).unwrap_or_else(|| "??:??".into());
 
         let label_color = [tc[0], tc[1], tc[2], 0xAA];
+
+        let (col_cx, y_offset) = if stacked {
+            // Stacked: each subclock gets its own row, centred horizontally
+            let row_y = tz_y_start + sz.area_h * i as f32;
+            (cx, row_y + (sz.area_h - content_h) / 2.0)
+        } else {
+            // Side-by-side columns
+            let tz_count = timezones.len();
+            let col_w = w / tz_count as f32;
+            let col_cx = col_w * i as f32 + col_w / 2.0;
+            (col_cx, tz_y_start + (sz.area_h - content_h) / 2.0)
+        };
 
         let (lw, _) = font.measure_text(&tz.label, sz.label_size);
         let label_x = col_cx - lw / 2.0;

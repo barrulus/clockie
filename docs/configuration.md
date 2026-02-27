@@ -125,7 +125,7 @@ tz    = "America/New_York"
 | `label` | string | Display label shown above the timezone time |
 | `tz` | string | [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) identifier |
 
-Sub-clocks respect the `hour_format` and `show_seconds` settings from `[clock]`.
+Sub-clocks respect the `hour_format` and `show_seconds` settings from `[clock]`. In compact mode, sub-clocks are hidden entirely. In analogue full mode, sub-clocks stack vertically (one per row, centred); in digital mode they are arranged side by side.
 
 ## Example config
 

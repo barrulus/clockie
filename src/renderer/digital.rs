@@ -1,13 +1,13 @@
 use crate::canvas::{self, Canvas, FontState};
-use crate::renderer::ClockState;
+use crate::renderer::{ClockState, SubclockSizing, draw_contrast_text};
 
-pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
+/// Render the digital clock background: image+scrim or solid fill.
+pub fn render_background(canvas: &mut Canvas, state: &ClockState, _font: &FontState) {
     let w = canvas.width() as f32;
     let h = canvas.height() as f32;
     let config = &state.config;
     let theme = &config.theme;
 
-    // Draw background image or solid color
     if !config.background.digital_image.is_empty() {
         if let Some(img) = canvas::load_image(&config.background.digital_image) {
             let scaled = canvas::scale_image(&img, canvas.width(), canvas.height(), &config.background.image_scale);
@@ -20,6 +20,13 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     } else {
         canvas.clear(theme.bg_color);
     }
+}
+
+/// Render the digital clock foreground: time text, date text.
+pub fn render_foreground(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
+    let w = canvas.width() as f32;
+    let h = canvas.height() as f32;
+    let config = &state.config;
 
     let compact = state.compact;
     let font_size = config.clock.font_size;
@@ -45,11 +52,7 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
 
     // Subclock area height
     let subclock_h = if !config.timezone.is_empty() {
-        let sc_label_size = time_size * 0.22;
-        let sc_time_size = sc_label_size * 1.3;
-        let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
-        let sc_sep_gap = pad_y * 0.5;
-        sc_sep_gap + sc_row_h + sc_sep_gap
+        SubclockSizing::from_base(time_size).area_h
     } else {
         0.0
     };
@@ -61,13 +64,13 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     let content_h = battery_h + battery_gap + time_size + date_gap + date_size;
     let time_y = (clock_area_h - content_h) / 2.0 + battery_h + battery_gap;
 
-    font.draw_text(canvas, &full_time, time_x, time_y, time_size, theme.fg_color);
+    draw_contrast_text(font, canvas, &full_time, time_x, time_y, time_size, state.contrast.text_color, &state.contrast);
 
     // Date string
     if config.clock.show_date && !compact {
         let (dw, _) = font.measure_text(&state.time.date_string, date_size);
         let date_x = (w - dw) / 2.0;
         let date_y = time_y + time_size + date_gap;
-        font.draw_text(canvas, &state.time.date_string, date_x, date_y, date_size, theme.fg_color);
+        draw_contrast_text(font, canvas, &state.time.date_string, date_x, date_y, date_size, state.contrast.text_color, &state.contrast);
     }
 }

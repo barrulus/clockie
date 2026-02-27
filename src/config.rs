@@ -161,6 +161,13 @@ pub struct ThemeConfig {
     pub second_hand_color: [u8; 4],
     #[serde(default = "default_tick_color", deserialize_with = "deserialize_color")]
     pub tick_color: [u8; 4],
+    /// Draw a contrasting outline around all text for readability
+    #[serde(default = "default_true")]
+    pub text_outline: bool,
+    /// Auto-contrast mode: "auto" | "always" | "never"
+    /// "auto" activates when a gallery is configured, "always" always samples background
+    #[serde(default = "default_auto_contrast")]
+    pub auto_contrast: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -210,6 +217,7 @@ fn default_font_size() -> f32 { 48.0 }
 fn default_diameter() -> u32 { 180 }
 fn default_image_scale() -> String { "fill".into() }
 
+fn default_auto_contrast() -> String { "auto".into() }
 fn default_fg_color() -> [u8; 4] { [0xFF, 0xFF, 0xFF, 0xFF] }
 fn default_bg_color() -> [u8; 4] { [0x00, 0x00, 0x00, 0xCC] }
 fn default_second_hand_color() -> [u8; 4] { [0xFF, 0x44, 0x44, 0xFF] }
@@ -294,6 +302,8 @@ impl Default for ThemeConfig {
             minute_hand_color: default_fg_color(),
             second_hand_color: default_second_hand_color(),
             tick_color: default_tick_color(),
+            text_outline: true,
+            auto_contrast: default_auto_contrast(),
         }
     }
 }
@@ -489,6 +499,10 @@ minute_hand_color = "FFFFFFFF"
 second_hand_color = "ef4444FF"
 # Tick mark colour (used when no face image)
 tick_color        = "CCCCCCFF"
+# Draw a contrasting outline around all text for readability
+text_outline      = true
+# Auto-contrast: "auto" (active when gallery configured) | "always" | "never"
+auto_contrast     = "auto"
 
 [background]
 # Path to a PNG/JPEG behind the digital clock text (empty = bg_color fill)

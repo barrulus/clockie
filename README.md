@@ -9,6 +9,8 @@ A lightweight Wayland layer-shell desktop clock widget written in Rust. Renders 
 - **Up to 2 timezone sub-clocks** displayed beneath the primary clock
 - **Battery indicator** with colour-coded charge level and charging animation
 - **Custom background images** for both digital and analogue faces (PNG/JPEG)
+- **Auto-contrast** -- text colour adapts to background brightness when using gallery images
+- **Text outlines** -- contrasting outline around all text for readability on any background
 - **Full theming** -- foreground, background, hand colours, tick marks, all in hex RGBA
 - **Drag-to-move** with cross-monitor support
 - **IPC control** via Unix socket (`clockiectl`)

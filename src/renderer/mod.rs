@@ -8,11 +8,63 @@ use crate::canvas::{Canvas, FontState};
 use crate::config::{ClockConfig, FaceMode};
 use crate::time_utils::ClockTime;
 
+/// Resolved contrast information for text rendering.
+pub struct ContrastInfo {
+    /// The color to use for text (may differ from theme.fg_color when auto-contrast is active).
+    pub text_color: [u8; 4],
+    /// Whether to draw a contrasting outline around text.
+    pub use_outline: bool,
+}
+
 pub struct ClockState {
     pub config: ClockConfig,
     pub time: ClockTime,
     pub compact: bool,
     pub battery: Option<BatteryInfo>,
+    pub contrast: ContrastInfo,
+}
+
+/// Draw text, optionally with a contrasting outline based on ContrastInfo.
+pub fn draw_contrast_text(font: &FontState, canvas: &mut Canvas, text: &str, x: f32, y: f32, size: f32, color: [u8; 4], contrast: &ContrastInfo) {
+    if contrast.use_outline {
+        let outline = outline_color_for(color);
+        font.draw_text_outlined(canvas, text, x, y, size, color, outline);
+    } else {
+        font.draw_text(canvas, text, x, y, size, color);
+    }
+}
+
+/// Pick a contrasting outline color: dark outline for light text, light for dark.
+fn outline_color_for(color: [u8; 4]) -> [u8; 4] {
+    let lum = 0.2126 * color[0] as f32 + 0.7152 * color[1] as f32 + 0.0722 * color[2] as f32;
+    if lum > 128.0 {
+        [0x00, 0x00, 0x00, color[3]]
+    } else {
+        [0xFF, 0xFF, 0xFF, color[3]]
+    }
+}
+
+/// Shared sizing constants for subclock text, eliminating duplication across renderers.
+#[allow(dead_code)]
+pub struct SubclockSizing {
+    pub label_size: f32,
+    pub time_size: f32,
+    pub row_h: f32,
+    pub sep_gap: f32,
+    pub area_h: f32,
+}
+
+impl SubclockSizing {
+    /// Compute subclock sizing from a base size (font_size for digital, diameter*0.25 for analogue).
+    pub fn from_base(base: f32) -> Self {
+        let pad_y = base * 0.25;
+        let label_size = (base * 0.33).max(11.0);
+        let time_size = (label_size * 1.5).max(16.0);
+        let row_h = label_size + time_size + label_size * 0.1;
+        let sep_gap = pad_y * 0.5;
+        let area_h = sep_gap + row_h + sep_gap;
+        Self { label_size, time_size, row_h, sep_gap, area_h }
+    }
 }
 
 /// Compute the required window dimensions based on config, font, and compact state.
@@ -71,29 +123,25 @@ fn compute_analogue_size(config: &ClockConfig, font: &FontState, compact: bool) 
     (width.ceil() as u32, height.ceil() as u32)
 }
 
-fn compute_subclock_size(config: &ClockConfig, font: &FontState, base: f32, pad_y: f32) -> (f32, f32) {
+fn compute_subclock_size(config: &ClockConfig, font: &FontState, base: f32, _pad_y: f32) -> (f32, f32) {
     let tz_count = config.timezone.len().min(2);
     if tz_count == 0 {
         return (0.0, 0.0);
     }
 
-    let sc_label_size = base * 0.22;
-    let sc_time_size = sc_label_size * 1.3;
-    let sc_row_h = sc_label_size + sc_time_size + sc_label_size * 0.1;
-    let sc_sep_gap = pad_y * 0.5;
-    let subclock_h = sc_sep_gap + sc_row_h + sc_sep_gap;
+    let sz = SubclockSizing::from_base(base);
 
     // Measure widest subclock column
     let widest_sc_time = widest_time_string(config);
-    let (sc_time_w, _) = font.measure_text(&widest_sc_time, sc_time_size);
+    let (sc_time_w, _) = font.measure_text(&widest_sc_time, sz.time_size);
     // Also consider label widths
     let max_label_w = config.timezone.iter().take(2)
-        .map(|tz| font.measure_text(&tz.label, sc_label_size).0)
+        .map(|tz| font.measure_text(&tz.label, sz.label_size).0)
         .fold(0.0f32, f32::max);
     let sc_col_w = sc_time_w.max(max_label_w) + base * 0.2;
     let subclock_w = sc_col_w * tz_count as f32;
 
-    (subclock_w, subclock_h)
+    (subclock_w, sz.area_h)
 }
 
 fn widest_time_string(config: &ClockConfig) -> String {
@@ -102,10 +150,19 @@ fn widest_time_string(config: &ClockConfig) -> String {
     format!("{}{}", time_part, suffix)
 }
 
-pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
+/// Render just the background layer (image/solid fill, face).
+pub fn render_background(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
     match state.config.clock.face {
-        FaceMode::Digital => digital::render(canvas, state, font),
-        FaceMode::Analogue => analogue::render(canvas, state, font),
+        FaceMode::Digital => digital::render_background(canvas, state, font),
+        FaceMode::Analogue => analogue::render_background(canvas, state, font),
+    }
+}
+
+/// Render the foreground layer (text, hands, battery, subclocks).
+pub fn render_foreground(canvas: &mut Canvas, state: &ClockState, font: &FontState) {
+    match state.config.clock.face {
+        FaceMode::Digital => digital::render_foreground(canvas, state, font),
+        FaceMode::Analogue => analogue::render_foreground(canvas, state, font),
     }
 
     // Draw battery indicator

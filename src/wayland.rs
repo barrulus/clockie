@@ -30,7 +30,7 @@ use std::time::{Duration, Instant};
 use crate::canvas::{Canvas, FontState};
 use crate::config::{self, ClockConfig, FaceMode};
 use crate::ipc;
-use crate::renderer::{self, ClockState};
+use crate::renderer::{self, ClockState, ContrastInfo};
 use crate::time_utils;
 
 pub struct GalleryState {
@@ -165,6 +165,10 @@ pub struct Clockie {
     // Gallery
     gallery: GalleryState,
 
+    // Auto-contrast: cached text color and dirty flag
+    contrast_dirty: bool,
+    cached_text_color: [u8; 4],
+
     should_quit: bool,
 }
 
@@ -245,6 +249,7 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
     let ipc_listener = ipc::create_listener(&ipc_socket_path)?;
 
     let pending_output_move = config.window.output.clone();
+    let initial_fg_color = config.theme.fg_color;
     let gallery = GalleryState::from_config(&config);
 
     let mut clockie = Clockie {
@@ -275,6 +280,8 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
         ipc_socket_path,
         pending_output_move,
         gallery,
+        contrast_dirty: true,
+        cached_text_color: initial_fg_color,
         should_quit: false,
     };
 
@@ -337,6 +344,7 @@ pub fn run(config: ClockConfig, config_path: PathBuf, socket_override: Option<Pa
         {
             clockie.gallery.rotate();
             clockie.needs_redraw = true;
+            clockie.contrast_dirty = true;
         }
 
         // Redraw if needed
@@ -601,14 +609,56 @@ impl Clockie {
         render_config.background.digital_image = self.gallery.current_digital_image().to_string();
         render_config.background.analogue_face_image = self.gallery.current_analogue_image().to_string();
 
+        // Determine if auto-contrast is active
+        let has_gallery = !self.gallery.digital_images.is_empty()
+            || !self.gallery.analogue_images.is_empty();
+        let auto_contrast_active = match render_config.theme.auto_contrast.as_str() {
+            "always" => true,
+            "never" => false,
+            _ /* "auto" */ => has_gallery,
+        };
+
+        // Phase 1: render background
+        let bg_state = ClockState {
+            config: render_config.clone(),
+            time: time.clone(),
+            compact: self.compact,
+            battery: battery.clone(),
+            contrast: ContrastInfo {
+                text_color: render_config.theme.fg_color,
+                use_outline: false,
+            },
+        };
+        renderer::render_background(&mut canvas, &bg_state, &self.font);
+
+        // Phase 2: resolve contrast (sample background luminance if needed)
+        if auto_contrast_active && self.contrast_dirty {
+            let lum = crate::canvas::sample_region_luminance(&canvas, 0, 0, width, height);
+            self.cached_text_color = if lum > 140.0 {
+                [0x1a, 0x1a, 0x1a, 0xFF] // dark text for light backgrounds
+            } else {
+                render_config.theme.fg_color
+            };
+            self.contrast_dirty = false;
+        } else if !auto_contrast_active {
+            self.cached_text_color = render_config.theme.fg_color;
+        }
+
+        let text_color = self.cached_text_color;
+        let use_outline = render_config.theme.text_outline;
+
+        // Phase 3: render foreground with resolved contrast
         let state = ClockState {
             config: render_config,
             time,
             compact: self.compact,
             battery,
+            contrast: ContrastInfo {
+                text_color,
+                use_outline,
+            },
         };
-
-        renderer::render(&mut canvas, &state, &self.font);
+        renderer::render_foreground(&mut canvas, &state, &self.font);
 
         // Apply window opacity (scale all channels — data is premultiplied RGBA)
         let opacity = self.config.window.opacity;
@@ -780,6 +830,7 @@ impl Clockie {
                         self.compact = compact;
                         self.font = FontState::new(&self.config.clock.font);
                         self.gallery.reload_from_config(&self.config);
+                        self.contrast_dirty = true;
 
                         // Recompute size from new config
                         self.update_size();
@@ -825,6 +876,7 @@ impl Clockie {
                     FaceMode::Analogue => self.gallery.next_analogue(),
                 }
                 self.needs_redraw = true;
+                self.contrast_dirty = true;
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GalleryPrev => {
@@ -833,6 +885,7 @@ impl Clockie {
                     FaceMode::Analogue => self.gallery.prev_analogue(),
                 }
                 self.needs_redraw = true;
+                self.contrast_dirty = true;
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GallerySet { index } => {
@@ -857,6 +910,7 @@ impl Clockie {
                     }
                 }
                 self.needs_redraw = true;
+                self.contrast_dirty = true;
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GalleryRotateStart { interval } => {

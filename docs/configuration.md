@@ -55,6 +55,18 @@ All colours are specified in `RRGGBB` or `RRGGBBAA` hex format. The `#` prefix i
 | `minute_hand_color` | hex string | `"FFFFFFFF"` | Analogue minute hand colour |
 | `second_hand_color` | hex string | `"ef4444FF"` | Analogue second hand colour |
 | `tick_color` | hex string | `"CCCCCCFF"` | Tick mark colour on procedural analogue face |
+| `text_outline` | boolean | `true` | Draw a contrasting outline around all text for readability |
+| `auto_contrast` | string | `"auto"` | Auto-contrast mode: `"auto"`, `"always"`, or `"never"` |
+
+**Auto-contrast** automatically picks a light or dark text colour based on the background brightness. This is especially useful when gallery images cycle through backgrounds of varying brightness.
+
+- `"auto"` -- activates only when a gallery is configured (digital or analogue)
+- `"always"` -- always samples the background and adapts text colour, even with a single static image
+- `"never"` -- always uses the configured `fg_color`
+
+When auto-contrast determines the background is light (luminance > 140), it switches to dark text (`#1a1a1a`). Otherwise it uses the configured `fg_color`.
+
+**Text outline** draws all text at 8 compass offsets in a contrasting colour (dark outline for light text, light for dark), then the actual text on top. The outline radius scales with font size. This ensures text remains readable regardless of the background. Set `text_outline = false` to disable.
 
 ## [background]
 
@@ -140,6 +152,8 @@ fg_color          = "FFFFFFFF"
 bg_color          = "1a1a2eCC"
 second_hand_color = "ef4444FF"
 tick_color        = "CCCCCCFF"
+text_outline      = true
+auto_contrast     = "auto"
 
 [background]
 digital_image       = ""

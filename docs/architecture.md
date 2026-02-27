@@ -9,10 +9,10 @@ src/
   ipc.rs                  IPC command/response types, socket handling
   battery.rs              Battery info from /sys/class/power_supply
   time_utils.rs           Time formatting, timezone conversion
-  canvas.rs               Drawing primitives (Canvas, FontState), image loading
+  canvas.rs               Drawing primitives (Canvas, FontState), outlined text, luminance sampling, image loading
   wayland.rs              Wayland integration, event loop, IPC polling
   renderer/
-    mod.rs                Size computation, render dispatch
+    mod.rs                Size computation, bg/fg render dispatch, ContrastInfo, SubclockSizing
     digital.rs            Digital face rendering
     analogue.rs           Analogue face rendering
     subclock.rs           Timezone sub-clock rendering
@@ -23,15 +23,22 @@ src/
 
 ## Rendering pipeline
 
+Rendering is split into background and foreground phases with a contrast-sampling step in between:
+
 1. **Size computation** (`renderer::compute_size`) -- measures text and computes the required window dimensions based on `font_size`/`diameter`, compact state, date visibility, battery, and timezone count
 2. **Canvas creation** -- a `tiny-skia` pixmap is created at the computed dimensions
-3. **Background** -- solid colour fill or scaled background image with colour scrim
-4. **Face rendering** -- digital text or analogue hands/ticks
-5. **Battery overlay** -- icon and percentage text in the top-right corner
-6. **Sub-clocks** -- timezone labels and times in a footer area
-7. **Opacity** -- per-pixel alpha scaling if opacity < 1.0
-8. **Pixel format conversion** -- RGBA to BGRA (ARGB8888 little-endian) for Wayland
-9. **Buffer commit** -- attached to the Wayland surface and committed
+3. **Background phase** (`renderer::render_background`) -- solid colour fill or scaled background image with colour scrim (digital), or clear + face image/procedural ticks (analogue)
+4. **Contrast resolution** -- if auto-contrast is active and the background changed (gallery rotate/next/prev), the canvas is sampled for average perceptual luminance. Light backgrounds (luminance > 140) trigger dark text; otherwise the configured `fg_color` is used. The result is cached until the next background change.
+5. **Foreground phase** (`renderer::render_foreground`) -- digital text or analogue hands/boss, battery overlay, and timezone sub-clocks. All text uses the resolved contrast colour and optional outline rendering.
+6. **Opacity** -- per-pixel alpha scaling if opacity < 1.0
+7. **Pixel format conversion** -- RGBA to BGRA (ARGB8888 little-endian) for Wayland
+8. **Buffer commit** -- attached to the Wayland surface and committed
+
+### Text rendering
+
+Text can be drawn in two modes depending on the `text_outline` config:
+- **Plain** -- standard alpha-blended text
+- **Outlined** -- text is drawn 9 times: once at each of 8 compass offsets in a contrasting colour (dark for light text, light for dark), then the actual text on top. The outline radius scales with font size: `(size * 0.04).max(0.8).min(1.5)` pixels.
 
 ## Event loop
 

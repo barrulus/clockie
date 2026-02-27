@@ -259,6 +259,20 @@ impl FontState {
         (width, max_height)
     }
 
+    /// Draw text with a contrasting outline for readability on varied backgrounds.
+    /// Draws text at 8 compass offsets in `outline_color`, then the actual text on top.
+    pub fn draw_text_outlined(&self, canvas: &mut Canvas, text: &str, x: f32, y: f32, size: f32, color: [u8; 4], outline_color: [u8; 4]) {
+        let r = (size * 0.04).max(0.8).min(1.5);
+        let offsets: [(f32, f32); 8] = [
+            (-r, 0.0), (r, 0.0), (0.0, -r), (0.0, r),
+            (-r, -r), (r, -r), (-r, r), (r, r),
+        ];
+        for (dx, dy) in &offsets {
+            self.draw_text(canvas, text, x + dx, y + dy, size, outline_color);
+        }
+        self.draw_text(canvas, text, x, y, size, color);
+    }
+
     pub fn draw_text(&self, canvas: &mut Canvas, text: &str, x: f32, y: f32, size: f32, color: [u8; 4]) {
         let mut cursor_x = x;
         for ch in text.chars() {
@@ -285,6 +299,36 @@ impl FontState {
             cursor_x += metrics.advance_width;
         }
     }
+}
+
+/// Sample the average perceptual luminance (0–255) of a rectangular region in the canvas.
+/// Samples every 4th pixel for performance.
+pub fn sample_region_luminance(canvas: &Canvas, x: u32, y: u32, w: u32, h: u32) -> f32 {
+    let data = canvas.pixmap.data();
+    let cw = canvas.width();
+    let ch = canvas.height();
+    let x_end = (x + w).min(cw);
+    let y_end = (y + h).min(ch);
+    let mut sum = 0.0f64;
+    let mut count = 0u32;
+    let mut py = y;
+    while py < y_end {
+        let mut px = x;
+        while px < x_end {
+            let idx = ((py * cw + px) * 4) as usize;
+            if idx + 2 < data.len() {
+                let r = data[idx] as f64;
+                let g = data[idx + 1] as f64;
+                let b = data[idx + 2] as f64;
+                sum += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                count += 1;
+            }
+            px += 4;
+        }
+        py += 4;
+    }
+    if count == 0 { return 0.0; }
+    (sum / count as f64) as f32
 }
 
 fn blend_pixel(pixmap: &mut Pixmap, x: u32, y: u32, color: [u8; 4], alpha: u8) {

@@ -1,7 +1,7 @@
 use crate::battery::BatteryInfo;
 use crate::canvas::{Canvas, FontState};
 use crate::config::FaceMode;
-use crate::renderer::ClockState;
+use crate::renderer::{ClockState, draw_contrast_text};
 
 pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState, battery: &BatteryInfo) {
     let w = canvas.width() as f32;
@@ -32,7 +32,8 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState, battery
         [0xEF, 0x44, 0x44, 0xFF] // red
     };
 
-    let outline_color: [u8; 4] = [0xCC, 0xCC, 0xCC, 0xFF];
+    let tc = state.contrast.text_color;
+    let outline_color: [u8; 4] = [tc[0], tc[1], tc[2], 0xCC];
 
     // Draw battery outline
     canvas.draw_line(x, y, x + icon_w, y, outline_color, border);
@@ -77,7 +78,7 @@ pub fn render(canvas: &mut Canvas, state: &ClockState, font: &FontState, battery
         let (tw, _th) = font.measure_text(&text, font_size);
         let text_x = x - tw - margin * 0.4;
         let text_y = y + (icon_h - font_size) / 2.0;
-        let text_color = state.config.theme.fg_color;
-        font.draw_text(canvas, &text, text_x, text_y, font_size, text_color);
+        let text_color = state.contrast.text_color;
+        draw_contrast_text(font, canvas, &text, text_x, text_y, font_size, text_color, &state.contrast);
     }
 }

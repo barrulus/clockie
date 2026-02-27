@@ -15,9 +15,11 @@ pub fn render_background(canvas: &mut Canvas, state: &ClockState, _font: &FontSt
     let effective = if state.compact { diameter * 0.75 } else { diameter };
     let radius = effective / 2.0;
 
-    // Subclock area height
-    let subclock_h = if !config.timezone.is_empty() {
-        SubclockSizing::from_base(diameter * 0.25).area_h
+    // Subclock area height (hidden in compact mode)
+    let subclock_h = if !state.compact && !config.timezone.is_empty() {
+        let tz_count = config.timezone.len().min(2);
+        let sz = SubclockSizing::from_base(diameter * 0.25);
+        sz.area_h * tz_count as f32
     } else {
         0.0
     };
@@ -52,9 +54,11 @@ pub fn render_foreground(canvas: &mut Canvas, state: &ClockState, _font: &FontSt
     let effective = if state.compact { diameter * 0.75 } else { diameter };
     let radius = effective / 2.0;
 
-    // Subclock area height
-    let subclock_h = if !config.timezone.is_empty() {
-        SubclockSizing::from_base(diameter * 0.25).area_h
+    // Subclock area height (hidden in compact mode)
+    let subclock_h = if !state.compact && !config.timezone.is_empty() {
+        let tz_count = config.timezone.len().min(2);
+        let sz = SubclockSizing::from_base(diameter * 0.25);
+        sz.area_h * tz_count as f32
     } else {
         0.0
     };

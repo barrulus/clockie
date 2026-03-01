@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Bare clock face: filled circle with a subtle edge -->
+
+  <circle cx="100" cy="100" r="97" fill="#1a1a2e"/>
+  <circle cx="100" cy="100" r="97" fill="none" stroke="#333" stroke-width="1.5"/>
+</svg>

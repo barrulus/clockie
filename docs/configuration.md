@@ -74,12 +74,26 @@ When auto-contrast determines the background is light (luminance > 140), it swit
 |-------|------|---------|-------------|
 | `digital_image` | string | `""` | Path to PNG/JPEG background for digital face (empty = solid `bg_color`) |
 | `analogue_face_image` | string | `""` | Path to PNG/JPEG for the analogue clock face (replaces procedural tick marks) |
+| `face_preset` | string | `""` | Bundled preset name or path to an SVG face file (see below) |
 | `image_scale` | string | `"fill"` | Scale mode: `"fill"`, `"fit"`, `"stretch"`, or `"center"` |
 | `digital_gallery` | string or array | unset | Gallery for digital mode: a folder path (all images inside) or an explicit list of paths |
 | `analogue_gallery` | string or array | unset | Gallery for analogue mode: a folder path (all images inside) or an explicit list of paths |
 | `gallery_interval` | integer | `0` | Auto-rotate interval in seconds. `0` = disabled. |
 
 Paths support `~` for the home directory (e.g. `"~/Pictures/clock.png"`).
+
+**Face presets:** Clockie ships with 4 bundled SVG clock faces. Set `face_preset` to one of the preset names to use it:
+
+| Preset | Description |
+|--------|-------------|
+| `"classic"` | Traditional: bezel ring, hour/minute ticks, Arabic numerals at 12/3/6/9 |
+| `"minimal"` | Clean: thin hour markers only, no numerals, subtle center dot |
+| `"modern"` | Bold: thick bar indices at hours, thin minute lines, accent ring |
+| `"bare"` | Just a filled circle with a subtle edge -- blank canvas for procedural hands |
+
+You can also set `face_preset` to a direct path (e.g. `"~/my-faces/custom.svg"`). Presets are resolved via XDG data directories -- see [Custom Faces](custom-faces.md) for details.
+
+**Priority order** for analogue face images: `analogue_gallery` > `face_preset` > `analogue_face_image`.
 
 **Gallery:** Set `digital_gallery` or `analogue_gallery` to enable cycling for that mode. Use a folder path to include all images in that directory, or an explicit array to control the exact order. Use `clockie ctl gallery next`/`prev` to cycle manually, or set `gallery_interval` to auto-rotate. When unset, the single-image fields (`digital_image`/`analogue_face_image`) are used.
 
@@ -96,6 +110,64 @@ digital_gallery = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
 - `fit` -- scale to fit within the area, letterboxing as needed
 - `stretch` -- stretch to fill exactly, ignoring aspect ratio
 - `center` -- place at original size, centred
+
+## [analogue]
+
+Controls the procedural elements of the analogue clock face: hands, tick marks, numerals, and decorations. These settings apply regardless of whether an SVG face image is used -- procedural hands are always drawn on top.
+
+### Hands
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `hand_cap` | string | `"round"` | Hand tip style: `"round"`, `"flat"`, or `"arrow"` |
+| `hand_taper` | float | `0.0` | Taper ratio from base to tip. `0.0` = uniform width, `1.0` = full taper (tip approaches zero width) |
+| `hour_hand_length` | float | `0.55` | Hour hand length as fraction of radius |
+| `hour_hand_width` | float | `0.06` | Hour hand width as fraction of radius |
+| `minute_hand_length` | float | `0.75` | Minute hand length as fraction of radius |
+| `minute_hand_width` | float | `0.04` | Minute hand width as fraction of radius |
+| `second_hand_length` | float | `0.85` | Second hand length as fraction of radius |
+| `second_hand_width` | float | `0.02` | Second hand width as fraction of radius |
+| `hand_shadow` | boolean | `false` | Draw a subtle drop shadow behind each hand |
+
+### Tick marks
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `show_ticks` | string | `"all60"` | Which ticks to show: `"all60"`, `"hours_only"`, `"quarters_only"`, or `"none"` |
+| `tick_style` | string | `"line"` | Tick shape: `"line"`, `"dot"`, or `"diamond"` |
+
+### Numerals
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `numerals` | string | `"none"` | Numeral labels: `"none"`, `"arabic"`, or `"roman"` |
+| `numeral_size` | float | `0.18` | Numeral size as fraction of radius |
+| `numeral_inset` | float | `0.15` | Distance from edge to numeral center, as fraction of radius |
+
+### Decorations
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `face_fill` | hex string | *(none)* | Fill colour behind the procedural face (empty = transparent) |
+| `bezel_width` | float | `0.0` | Bezel ring width as fraction of radius (`0` = thin 2px default) |
+| `bezel_color` | hex string | `"FFFFFFFF"` | Bezel ring colour |
+| `minute_track_width` | float | `0.0` | Minute track ring width as fraction of radius (`0` = hidden) |
+| `minute_track_color` | hex string | `"CCCCCCFF"` | Minute track ring colour |
+
+When an SVG face is loaded (via `face_preset` or gallery), procedural decorations like ticks, numerals, bezel, and face fill are typically redundant -- the SVG provides the visual elements. Set `show_ticks = "none"` and `numerals = "none"` to avoid drawing over the SVG. Hands are always drawn procedurally.
+
+**Example -- arrow hands with roman numerals:**
+
+```toml
+[analogue]
+hand_cap = "arrow"
+hand_taper = 0.3
+hand_shadow = true
+numerals = "roman"
+numeral_size = 0.16
+show_ticks = "hours_only"
+tick_style = "dot"
+```
 
 ## [battery]
 
@@ -158,6 +230,7 @@ auto_contrast     = "auto"
 [background]
 digital_image       = ""
 analogue_face_image = ""
+# face_preset       = "classic"
 image_scale         = "fill"
 # analogue_gallery = "~/.config/clockie/faces/analogue/"
 # digital_gallery = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]

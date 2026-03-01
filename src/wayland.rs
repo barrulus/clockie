@@ -723,11 +723,13 @@ impl Clockie {
                     "digital" => {
                         self.config.clock.face = FaceMode::Digital;
                         self.update_size();
+                        config::save_face_to_config(&self.config_path, FaceMode::Digital);
                         ipc::IpcResponse::ok()
                     }
                     "analogue" => {
                         self.config.clock.face = FaceMode::Analogue;
                         self.update_size();
+                        config::save_face_to_config(&self.config_path, FaceMode::Analogue);
                         ipc::IpcResponse::ok()
                     }
                     _ => ipc::IpcResponse::err(format!("Unknown face: {}", face)),
@@ -736,16 +738,19 @@ impl Clockie {
             ipc::IpcCommand::ToggleFace => {
                 self.config.clock.face = self.config.clock.face.toggle();
                 self.update_size();
+                config::save_face_to_config(&self.config_path, self.config.clock.face);
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::SetCompact { compact } => {
                 self.compact = compact;
                 self.update_size();
+                config::save_compact_to_config(&self.config_path, compact);
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::ToggleCompact => {
                 self.compact = !self.compact;
                 self.update_size();
+                config::save_compact_to_config(&self.config_path, self.compact);
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::SetFontSize { size } => {

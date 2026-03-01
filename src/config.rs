@@ -47,7 +47,7 @@ fn expand_tilde_path(path: &str) -> String {
 }
 
 fn discover_images_in_dir(dir: &str) -> Vec<String> {
-    const EXTS: &[&str] = &["png", "jpg", "jpeg", "webp"];
+    const EXTS: &[&str] = &["png", "jpg", "jpeg", "webp", "svg", "svgz"];
     let mut images: Vec<String> = Vec::new();
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {

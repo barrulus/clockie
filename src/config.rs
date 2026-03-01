@@ -178,6 +178,9 @@ pub struct BackgroundConfig {
     pub digital_image: String,
     #[serde(default)]
     pub analogue_face_image: String,
+    /// Preset face name (e.g. "classic", "minimal") or direct path to an SVG file.
+    #[serde(default)]
+    pub face_preset: String,
     #[serde(default = "default_image_scale")]
     pub image_scale: String,
     /// Gallery source for digital mode: a folder path or an explicit list of image paths.
@@ -447,12 +450,61 @@ impl Default for BackgroundConfig {
         Self {
             digital_image: String::new(),
             analogue_face_image: String::new(),
+            face_preset: String::new(),
             image_scale: default_image_scale(),
             digital_gallery: None,
             analogue_gallery: None,
             gallery_interval: 0,
         }
     }
+}
+
+/// Resolve a face preset name to a file path.
+///
+/// - If `name` is empty, returns `None`.
+/// - If `name` contains a path separator or ends with `.svg`/`.svgz`, treats it as a
+///   direct path (with tilde expansion) and returns it if the file exists.
+/// - Otherwise treats `name` as a preset and searches XDG data dirs for
+///   `clockie/faces/{name}.svg`.
+pub fn resolve_face_preset(name: &str) -> Option<String> {
+    if name.is_empty() {
+        return None;
+    }
+
+    // Direct path: contains separator or has svg extension
+    if name.contains(std::path::MAIN_SEPARATOR) || name.contains('/')
+        || name.ends_with(".svg") || name.ends_with(".svgz")
+    {
+        let expanded = expand_tilde_path(name);
+        return if std::path::Path::new(&expanded).exists() {
+            Some(expanded)
+        } else {
+            log::warn!("face_preset path not found: {}", expanded);
+            None
+        };
+    }
+
+    // Preset name: search XDG data dirs
+    let data_home = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+        format!("{}/.local/share", home)
+    });
+
+    let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")
+        .unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
+
+    let mut search_dirs = vec![data_home];
+    search_dirs.extend(xdg_data_dirs.split(':').map(String::from));
+
+    for dir in &search_dirs {
+        let path = format!("{}/clockie/faces/{}.svg", dir, name);
+        if std::path::Path::new(&path).exists() {
+            return Some(path);
+        }
+    }
+
+    log::warn!("face_preset '{}' not found in XDG data dirs", name);
+    None
 }
 
 impl BackgroundConfig {
@@ -471,11 +523,14 @@ impl BackgroundConfig {
     }
 
     /// Return the effective list of analogue face images.
-    /// Resolves `analogue_gallery` if set, else falls back to `analogue_face_image`.
+    /// Priority: gallery → face_preset (resolved) → analogue_face_image → empty.
     pub fn effective_analogue_face_images(&self) -> Vec<String> {
         if let Some(gallery) = &self.analogue_gallery {
             let images = gallery.resolve();
             if !images.is_empty() { return images; }
+        }
+        if let Some(path) = resolve_face_preset(&self.face_preset) {
+            return vec![path];
         }
         if !self.analogue_face_image.is_empty() {
             vec![self.analogue_face_image.clone()]
@@ -674,6 +729,8 @@ auto_contrast     = "auto"
 digital_image = ""
 # Path to a PNG/JPEG for the analogue face (replaces drawn ticks)
 analogue_face_image = ""
+# Bundled preset face: "classic", "minimal", "modern", "bare", or a path to an SVG
+# face_preset = "classic"
 # Scale mode: "fill" | "fit" | "stretch" | "center"
 image_scale = "fill"
 # Gallery: a folder path (all images inside) or an explicit list of paths

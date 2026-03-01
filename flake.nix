@@ -53,6 +53,10 @@
             installShellCompletion --bash clockie.bash
             installShellCompletion --zsh clockie.zsh
             installShellCompletion --fish clockie.fish
+
+            # Install bundled SVG face presets
+            mkdir -p $out/share/clockie/faces
+            cp faces/*.svg $out/share/clockie/faces/
           '';
           nativeBuildInputs = nativeBuildInputs ++ [ pkgs.installShellFiles ];
         });

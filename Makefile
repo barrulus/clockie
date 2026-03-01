@@ -1,5 +1,6 @@
 PREFIX ?= /usr/local
 BINDIR = $(PREFIX)/bin
+FACESDIR = $(PREFIX)/share/clockie/faces
 COMPLETIONS_BASH = $(PREFIX)/share/bash-completion/completions
 COMPLETIONS_ZSH = $(PREFIX)/share/zsh/site-functions
 COMPLETIONS_FISH = $(PREFIX)/share/fish/vendor_completions.d
@@ -11,6 +12,10 @@ build:
 
 install: build completions
 	install -Dm755 target/release/clockie $(DESTDIR)$(BINDIR)/clockie
+	install -Dm644 faces/classic.svg $(DESTDIR)$(FACESDIR)/classic.svg
+	install -Dm644 faces/minimal.svg $(DESTDIR)$(FACESDIR)/minimal.svg
+	install -Dm644 faces/modern.svg $(DESTDIR)$(FACESDIR)/modern.svg
+	install -Dm644 faces/bare.svg $(DESTDIR)$(FACESDIR)/bare.svg
 	install -Dm644 target/completions/clockie.bash $(DESTDIR)$(COMPLETIONS_BASH)/clockie
 	install -Dm644 target/completions/_clockie $(DESTDIR)$(COMPLETIONS_ZSH)/_clockie
 	install -Dm644 target/completions/clockie.fish $(DESTDIR)$(COMPLETIONS_FISH)/clockie.fish
@@ -23,6 +28,10 @@ completions: build
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/clockie
+	rm -f $(DESTDIR)$(FACESDIR)/classic.svg
+	rm -f $(DESTDIR)$(FACESDIR)/minimal.svg
+	rm -f $(DESTDIR)$(FACESDIR)/modern.svg
+	rm -f $(DESTDIR)$(FACESDIR)/bare.svg
 	rm -f $(DESTDIR)$(COMPLETIONS_BASH)/clockie
 	rm -f $(DESTDIR)$(COMPLETIONS_ZSH)/_clockie
 	rm -f $(DESTDIR)$(COMPLETIONS_FISH)/clockie.fish

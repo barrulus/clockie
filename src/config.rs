@@ -93,6 +93,8 @@ pub struct ClockConfig {
     #[serde(default)]
     pub background: BackgroundConfig,
     #[serde(default)]
+    pub analogue: AnalogueConfig,
+    #[serde(default)]
     pub battery: BatteryConfig,
     #[serde(default)]
     pub timezone: Vec<TimezoneEntry>,
@@ -202,6 +204,137 @@ pub struct TimezoneEntry {
     pub tz: String,
 }
 
+// ── Analogue theming ─────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum HandCap {
+    Round,
+    Flat,
+    Arrow,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TickVisibility {
+    All60,
+    HoursOnly,
+    QuartersOnly,
+    None,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TickStyle {
+    Line,
+    Dot,
+    Diamond,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NumeralStyle {
+    None,
+    Arabic,
+    Roman,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnalogueConfig {
+    // Hands
+    #[serde(default = "default_hand_cap")]
+    pub hand_cap: HandCap,
+    #[serde(default)]
+    pub hand_taper: f32,
+    #[serde(default = "default_hour_hand_length")]
+    pub hour_hand_length: f32,
+    #[serde(default = "default_hour_hand_width")]
+    pub hour_hand_width: f32,
+    #[serde(default = "default_minute_hand_length")]
+    pub minute_hand_length: f32,
+    #[serde(default = "default_minute_hand_width")]
+    pub minute_hand_width: f32,
+    #[serde(default = "default_second_hand_length")]
+    pub second_hand_length: f32,
+    #[serde(default = "default_second_hand_width")]
+    pub second_hand_width: f32,
+    #[serde(default)]
+    pub hand_shadow: bool,
+
+    // Ticks
+    #[serde(default = "default_tick_visibility")]
+    pub show_ticks: TickVisibility,
+    #[serde(default = "default_tick_style")]
+    pub tick_style: TickStyle,
+
+    // Numerals
+    #[serde(default = "default_numeral_style")]
+    pub numerals: NumeralStyle,
+    #[serde(default = "default_numeral_size")]
+    pub numeral_size: f32,
+    #[serde(default = "default_numeral_inset")]
+    pub numeral_inset: f32,
+
+    // Decorations
+    #[serde(default, deserialize_with = "deserialize_optional_color")]
+    pub face_fill: Option<[u8; 4]>,
+    #[serde(default)]
+    pub bezel_width: f32,
+    #[serde(default = "default_fg_color", deserialize_with = "deserialize_color")]
+    pub bezel_color: [u8; 4],
+    #[serde(default)]
+    pub minute_track_width: f32,
+    #[serde(default = "default_tick_color", deserialize_with = "deserialize_color")]
+    pub minute_track_color: [u8; 4],
+}
+
+fn default_hand_cap() -> HandCap { HandCap::Round }
+fn default_hour_hand_length() -> f32 { 0.55 }
+fn default_hour_hand_width() -> f32 { 0.06 }
+fn default_minute_hand_length() -> f32 { 0.75 }
+fn default_minute_hand_width() -> f32 { 0.04 }
+fn default_second_hand_length() -> f32 { 0.85 }
+fn default_second_hand_width() -> f32 { 0.02 }
+fn default_tick_visibility() -> TickVisibility { TickVisibility::All60 }
+fn default_tick_style() -> TickStyle { TickStyle::Line }
+fn default_numeral_style() -> NumeralStyle { NumeralStyle::None }
+fn default_numeral_size() -> f32 { 0.18 }
+fn default_numeral_inset() -> f32 { 0.15 }
+
+impl Default for AnalogueConfig {
+    fn default() -> Self {
+        Self {
+            hand_cap: default_hand_cap(),
+            hand_taper: 0.0,
+            hour_hand_length: default_hour_hand_length(),
+            hour_hand_width: default_hour_hand_width(),
+            minute_hand_length: default_minute_hand_length(),
+            minute_hand_width: default_minute_hand_width(),
+            second_hand_length: default_second_hand_length(),
+            second_hand_width: default_second_hand_width(),
+            hand_shadow: false,
+            show_ticks: default_tick_visibility(),
+            tick_style: default_tick_style(),
+            numerals: default_numeral_style(),
+            numeral_size: default_numeral_size(),
+            numeral_inset: default_numeral_inset(),
+            face_fill: None,
+            bezel_width: 0.0,
+            bezel_color: default_fg_color(),
+            minute_track_width: 0.0,
+            minute_track_color: default_tick_color(),
+        }
+    }
+}
+
+fn deserialize_optional_color<'de, D: Deserializer<'de>>(d: D) -> Result<Option<[u8; 4]>, D::Error> {
+    let s = Option::<String>::deserialize(d)?;
+    match s {
+        Some(ref v) if !v.is_empty() => parse_color(v).map(Some).map_err(serde::de::Error::custom),
+        _ => Ok(None),
+    }
+}
+
 // Defaults
 
 fn default_layer() -> String { "top".into() }
@@ -247,6 +380,7 @@ impl Default for ClockConfig {
             clock: ClockSettings::default(),
             theme: ThemeConfig::default(),
             background: BackgroundConfig::default(),
+            analogue: AnalogueConfig::default(),
             battery: BatteryConfig::default(),
             timezone: Vec::new(),
         }
@@ -549,6 +683,37 @@ image_scale = "fill"
 # analogue_gallery = ["~/faces/classic.png", "~/faces/minimal.png"]
 # Auto-rotate interval in seconds (0 = disabled)
 # gallery_interval = 300
+
+# [analogue]
+# Hand tip style: "round" | "flat" | "arrow"
+# hand_cap = "round"
+# Taper ratio 0.0 (uniform) to 1.0 (full taper, tip approaches zero width)
+# hand_taper = 0.0
+# Hand lengths as fraction of radius
+# hour_hand_length   = 0.55
+# hour_hand_width    = 0.06
+# minute_hand_length = 0.75
+# minute_hand_width  = 0.04
+# second_hand_length = 0.85
+# second_hand_width  = 0.02
+# Draw a subtle drop shadow behind each hand
+# hand_shadow = false
+# Which tick marks to show: "all60" | "hours_only" | "quarters_only" | "none"
+# show_ticks = "all60"
+# Tick shape: "line" | "dot" | "diamond"
+# tick_style = "line"
+# Numeral labels: "none" | "arabic" | "roman"
+# numerals = "none"
+# numeral_size = 0.18
+# numeral_inset = 0.15
+# Fill colour behind the procedural face (empty = transparent)
+# face_fill = ""
+# Bezel ring width as fraction of radius (0 = thin 2px default)
+# bezel_width = 0.0
+# bezel_color = "FFFFFFFF"
+# Minute track ring width as fraction of radius (0 = hidden)
+# minute_track_width = 0.0
+# minute_track_color = "CCCCCCFF"
 
 [battery]
 # Show a battery indicator in the top-right corner

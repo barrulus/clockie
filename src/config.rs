@@ -406,6 +406,13 @@ fn ensure_window_table(doc: &mut toml_edit::DocumentMut) {
     }
 }
 
+/// Ensure a [clock] table exists in the document, creating one if needed.
+fn ensure_clock_table(doc: &mut toml_edit::DocumentMut) {
+    if !doc.contains_key("clock") {
+        doc["clock"] = toml_edit::Item::Table(toml_edit::Table::new());
+    }
+}
+
 pub fn save_margins_to_config(path: &std::path::Path, top: i32, right: i32, bottom: i32, left: i32) {
     let Some(mut doc) = read_config_doc(path) else { return };
     ensure_window_table(&mut doc);
@@ -427,6 +434,30 @@ pub fn save_output_to_config(path: &std::path::Path, output_name: &str) {
 
     write_config_doc(path, &doc);
     log::info!("Persisted output to {}", path.display());
+}
+
+pub fn save_face_to_config(path: &std::path::Path, face: FaceMode) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_clock_table(&mut doc);
+
+    let face_str = match face {
+        FaceMode::Digital => "digital",
+        FaceMode::Analogue => "analogue",
+    };
+    doc["clock"]["face"] = toml_edit::value(face_str);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted face={} to {}", face_str, path.display());
+}
+
+pub fn save_compact_to_config(path: &std::path::Path, compact: bool) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_window_table(&mut doc);
+
+    doc["window"]["compact"] = toml_edit::value(compact);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted compact={} to {}", compact, path.display());
 }
 
 pub fn load_config(path: &std::path::Path) -> Result<ClockConfig> {

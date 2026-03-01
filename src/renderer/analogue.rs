@@ -31,10 +31,15 @@ pub fn render_background(canvas: &mut Canvas, state: &ClockState, _font: &FontSt
 
     // Draw face image or procedural face
     if !config.background.analogue_face_image.is_empty() {
-        if let Some(img) = canvas::load_image(&config.background.analogue_face_image) {
-            let size = (radius * 2.0) as u32;
-            let scaled = canvas::scale_image(&img, size, size, &config.background.image_scale);
-            canvas.draw_image(&scaled, (cx - radius) as i32, (cy - radius) as i32);
+        let path = &config.background.analogue_face_image;
+        let size = (radius * 2.0) as u32;
+        let face = if canvas::is_svg(path) {
+            canvas::load_svg(path, size, size)
+        } else {
+            canvas::load_image(path).map(|img| canvas::scale_image(&img, size, size, &config.background.image_scale))
+        };
+        if let Some(img) = face {
+            canvas.draw_image(&img, (cx - radius) as i32, (cy - radius) as i32);
         } else {
             draw_procedural_face(canvas, cx, cy, radius, theme);
         }

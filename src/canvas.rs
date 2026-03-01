@@ -354,6 +354,24 @@ fn expand_tilde(path: &str) -> String {
     path.to_string()
 }
 
+pub fn is_svg(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    lower.ends_with(".svg") || lower.ends_with(".svgz")
+}
+
+pub fn load_svg(path: &str, width: u32, height: u32) -> Option<Pixmap> {
+    if path.is_empty() { return None; }
+    let expanded = expand_tilde(path);
+    let data = std::fs::read(&expanded).ok()?;
+    let tree = resvg::usvg::Tree::from_data(&data, &resvg::usvg::Options::default()).ok()?;
+    let mut pixmap = Pixmap::new(width, height)?;
+    let svg_size = tree.size();
+    let sx = width as f32 / svg_size.width();
+    let sy = height as f32 / svg_size.height();
+    resvg::render(&tree, Transform::from_scale(sx, sy), &mut pixmap.as_mut());
+    Some(pixmap)
+}
+
 pub fn load_image(path: &str) -> Option<Pixmap> {
     if path.is_empty() { return None; }
     let expanded = expand_tilde(path);

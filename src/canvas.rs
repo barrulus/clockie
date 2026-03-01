@@ -74,6 +74,22 @@ impl Canvas {
         }
     }
 
+    pub fn fill_polygon(&mut self, points: &[(f32, f32)], color: [u8; 4]) {
+        if points.len() < 3 { return; }
+        let mut pb = PathBuilder::new();
+        pb.move_to(points[0].0, points[0].1);
+        for &(x, y) in &points[1..] {
+            pb.line_to(x, y);
+        }
+        pb.close();
+        if let Some(path) = pb.finish() {
+            let mut paint = Paint::default();
+            paint.set_color_rgba8(color[0], color[1], color[2], color[3]);
+            paint.anti_alias = true;
+            self.pixmap.fill_path(&path, &paint, tiny_skia::FillRule::Winding, Transform::identity(), None);
+        }
+    }
+
     pub fn draw_image(&mut self, img: &Pixmap, x: i32, y: i32) {
         self.pixmap.draw_pixmap(
             x, y, img.as_ref(),

@@ -1,6 +1,6 @@
 # Compositor integration
 
-Clockie uses the `wlr-layer-shell` protocol and works on any supporting Wayland compositor. This guide shows how to autostart clockie, bind hotkeys to `clockiectl`, and apply compositor-level rules.
+Clockie uses the `wlr-layer-shell` protocol and works on any supporting Wayland compositor. This guide shows how to autostart clockie, bind hotkeys to `clockie ctl`, and apply compositor-level rules.
 
 ## Hyprland
 
@@ -16,17 +16,17 @@ exec-once = clockie
 
 ```ini
 # Toggle compact mode
-bind = ALT, DOWN, exec, clockiectl compact toggle
+bind = ALT, DOWN, exec, clockie ctl compact toggle
 # Toggle face (digital / analogue)
-bind = ALT, SPACE, exec, clockiectl face toggle
+bind = ALT, SPACE, exec, clockie ctl face toggle
 # Toggle drag lock
-bind = ALT, RIGHT, exec, clockiectl lock toggle
+bind = ALT, RIGHT, exec, clockie ctl lock toggle
 # Scale up / down
-bind = ALT, EQUAL, exec, clockiectl size +10
-bind = ALT, MINUS, exec, clockiectl size -10
+bind = ALT, EQUAL, exec, clockie ctl size +10
+bind = ALT, MINUS, exec, clockie ctl size -10
 # Gallery: next / previous image
-bind = ALT, BRACKETRIGHT, exec, clockiectl gallery next
-bind = ALT, BRACKETLEFT, exec, clockiectl gallery prev
+bind = ALT, BRACKETRIGHT, exec, clockie ctl gallery next
+bind = ALT, BRACKETLEFT, exec, clockie ctl gallery prev
 ```
 
 ### Layer rules
@@ -59,17 +59,17 @@ Add these inside `binds { }`:
 ```kdl
 binds {
     // Toggle compact mode
-    Alt+Down { spawn "clockiectl" "compact" "toggle"; }
+    Alt+Down { spawn "clockie" "ctl" "compact" "toggle"; }
     // Toggle face (digital / analogue)
-    Alt+Space { spawn "clockiectl" "face" "toggle"; }
+    Alt+Space { spawn "clockie" "ctl" "face" "toggle"; }
     // Toggle drag lock
-    Alt+Right { spawn "clockiectl" "lock" "toggle"; }
+    Alt+Right { spawn "clockie" "ctl" "lock" "toggle"; }
     // Scale up / down
-    Alt+Equal { spawn "clockiectl" "size" "+10"; }
-    Alt+Minus { spawn "clockiectl" "size" "--" "-10"; }
+    Alt+Equal { spawn "clockie" "ctl" "size" "+10"; }
+    Alt+Minus { spawn "clockie" "ctl" "size" "--" "-10"; }
     // Gallery: next / previous image
-    Alt+BracketRight { spawn "clockiectl" "gallery" "next"; }
-    Alt+BracketLeft { spawn "clockiectl" "gallery" "prev"; }
+    Alt+BracketRight { spawn "clockie" "ctl" "gallery" "next"; }
+    Alt+BracketLeft { spawn "clockie" "ctl" "gallery" "prev"; }
 }
 ```
 
@@ -101,17 +101,17 @@ exec-once=clockie
 
 ```ini
 # Toggle compact mode
-bind=ALT,Down,spawn,clockiectl compact toggle
+bind=ALT,Down,spawn,clockie ctl compact toggle
 # Toggle face (digital / analogue)
-bind=ALT,Space,spawn,clockiectl face toggle
+bind=ALT,Space,spawn,clockie ctl face toggle
 # Toggle drag lock
-bind=ALT,Right,spawn,clockiectl lock toggle
+bind=ALT,Right,spawn,clockie ctl lock toggle
 # Scale up / down
-bind=ALT,Equal,spawn,clockiectl size +10
-bind=ALT,Minus,spawn,clockiectl size -10
+bind=ALT,Equal,spawn,clockie ctl size +10
+bind=ALT,Minus,spawn,clockie ctl size -10
 # Gallery: next / previous image
-bind=ALT,BracketRight,spawn,clockiectl gallery next
-bind=ALT,BracketLeft,spawn,clockiectl gallery prev
+bind=ALT,BracketRight,spawn,clockie ctl gallery next
+bind=ALT,BracketLeft,spawn,clockie ctl gallery prev
 ```
 
 ### Layer rules
@@ -139,17 +139,17 @@ exec clockie
 
 ```
 # Toggle compact mode
-bindsym Alt+Down exec clockiectl compact toggle
+bindsym Alt+Down exec clockie ctl compact toggle
 # Toggle face (digital / analogue)
-bindsym Alt+space exec clockiectl face toggle
+bindsym Alt+space exec clockie ctl face toggle
 # Toggle drag lock
-bindsym Alt+Right exec clockiectl lock toggle
+bindsym Alt+Right exec clockie ctl lock toggle
 # Scale up / down
-bindsym Alt+equal exec clockiectl size +10
-bindsym Alt+minus exec clockiectl size -10
+bindsym Alt+equal exec clockie ctl size +10
+bindsym Alt+minus exec clockie ctl size -10
 # Gallery: next / previous image
-bindsym Alt+bracketright exec clockiectl gallery next
-bindsym Alt+bracketleft exec clockiectl gallery prev
+bindsym Alt+bracketright exec clockie ctl gallery next
+bindsym Alt+bracketleft exec clockie ctl gallery prev
 ```
 
 ## General notes

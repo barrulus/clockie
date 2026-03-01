@@ -48,12 +48,11 @@
             # Generate shell completions
             for shell in bash zsh fish; do
               $out/bin/clockie --completions $shell > clockie.$shell
-              $out/bin/clockiectl completions $shell > clockiectl.$shell
             done
 
-            installShellCompletion --bash clockie.bash clockiectl.bash
-            installShellCompletion --zsh clockie.zsh clockiectl.zsh
-            installShellCompletion --fish clockie.fish clockiectl.fish
+            installShellCompletion --bash clockie.bash
+            installShellCompletion --zsh clockie.zsh
+            installShellCompletion --fish clockie.fish
           '';
           nativeBuildInputs = nativeBuildInputs ++ [ pkgs.installShellFiles ];
         });

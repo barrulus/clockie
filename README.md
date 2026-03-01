@@ -13,7 +13,7 @@ A lightweight Wayland layer-shell desktop clock widget written in Rust. Renders 
 - **Text outlines** -- contrasting outline around all text for readability on any background
 - **Full theming** -- foreground, background, hand colours, tick marks, all in hex RGBA
 - **Drag-to-move** with cross-monitor support
-- **IPC control** via Unix socket (`clockiectl`)
+- **IPC control** via Unix socket (`clockie ctl`)
 - **TOML configuration** with sensible defaults generated on first run
 
 ![Analogue 1](docs/images/analogue1.png)
@@ -64,7 +64,6 @@ With `cargo install`, generate completions manually:
 
 ```sh
 clockie --completions bash > ~/.local/share/bash-completion/completions/clockie
-clockiectl completions bash > ~/.local/share/bash-completion/completions/clockiectl
 ```
 
 ## Quick start
@@ -85,7 +84,7 @@ On first run, a default config file is generated at `~/.config/clockie/config.to
 ## Documentation
 
 - [Configuration](docs/configuration.md) -- all config fields and examples
-- [CLI usage](docs/cli.md) -- `clockie` and `clockiectl` commands
+- [CLI usage](docs/cli.md) -- `clockie` daemon and `clockie ctl` commands
 - [IPC protocol](docs/ipc.md) -- JSON socket protocol for programmatic control
 - [Multi-monitor](docs/multi-monitor.md) -- cross-monitor drag and output switching
 - [Compositor integration](docs/compositor-integration.md) -- Hyprland, niri, Mango, and Sway examples
@@ -93,8 +92,8 @@ On first run, a default config file is generated at `~/.config/clockie/config.to
 
 ## Tips
 
-- **Quick resize:** Bind `clockiectl size +10` / `clockiectl size -10` to compositor hotkeys.
-- **Face switching:** Bind `clockiectl face toggle` for one-key switching.
+- **Quick resize:** Bind `clockie ctl size +10` / `clockie ctl size -10` to compositor hotkeys.
+- **Face switching:** Bind `clockie ctl face toggle` for one-key switching.
 - **Multiple instances:** Use `--socket` to run separate clockie instances.
 - **Transparent background:** Set `bg_color` alpha to `00` (e.g. `"1a1a2e00"`) for a fully transparent background.
 

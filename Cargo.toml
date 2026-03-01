@@ -8,10 +8,6 @@ description = "Lightweight Wayland layer-shell desktop clock widget"
 name = "clockie"
 path = "src/main.rs"
 
-[[bin]]
-name = "clockiectl"
-path = "src/bin/clockiectl.rs"
-
 [dependencies]
 # Wayland
 smithay-client-toolkit = { version = "0.19", default-features = false, features = ["calloop"] }

@@ -8,12 +8,12 @@ When you drag the clock to the edge of a monitor that borders another monitor, t
 
 Both the output name and margins are persisted to config on move.
 
-## IPC / clockiectl
+## IPC / clockie ctl
 
 ```sh
-clockiectl output HDMI-A-1   # move to a specific output by name
-clockiectl output next       # cycle to the next output
-clockiectl output prev       # cycle to the previous output
+clockie ctl output HDMI-A-1   # move to a specific output by name
+clockie ctl output next       # cycle to the next output
+clockie ctl output prev       # cycle to the previous output
 ```
 
 ## Config persistence

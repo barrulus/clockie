@@ -1,19 +1,20 @@
 mod battery;
 mod canvas;
 mod config;
+mod ctl;
 mod ipc;
 mod renderer;
 mod time_utils;
 mod wayland;
 
 use anyhow::Result;
-use clap::{CommandFactory, Parser};
+use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::Shell;
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(name = "clockie", version, about = "Lightweight Wayland layer-shell desktop clock")]
-struct Args {
+pub struct Cli {
     /// Path to config file
     #[arg(short, long)]
     config: Option<PathBuf>,
@@ -45,15 +46,31 @@ struct Args {
     /// Generate shell completions and exit
     #[arg(long, value_name = "SHELL")]
     completions: Option<Shell>,
+
+    #[command(subcommand)]
+    command: Option<CliCommand>,
+}
+
+#[derive(Subcommand, Debug)]
+enum CliCommand {
+    /// Control a running clockie instance
+    Ctl(ctl::CtlArgs),
 }
 
 fn main() -> Result<()> {
+    let cli = Cli::parse();
+
+    match cli.command {
+        Some(CliCommand::Ctl(args)) => ctl::run(args),
+        None => run_daemon(cli),
+    }
+}
+
+fn run_daemon(args: Cli) -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let args = Args::parse();
-
     if let Some(shell) = args.completions {
-        let mut cmd = Args::command();
+        let mut cmd = Cli::command();
         clap_complete::generate(shell, &mut cmd, "clockie", &mut std::io::stdout());
         return Ok(());
     }

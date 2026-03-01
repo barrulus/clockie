@@ -6,9 +6,11 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 
-#[derive(Parser)]
-#[command(name = "clockiectl", version, about = "Control the clockie desktop clock")]
-struct Cli {
+use crate::ipc;
+
+#[derive(Parser, Debug)]
+#[command(name = "ctl", about = "Control a running clockie instance")]
+pub struct CtlArgs {
     /// Override socket path
     #[arg(long)]
     socket: Option<PathBuf>,
@@ -17,7 +19,7 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     /// Set or toggle clock face mode
     Face {
@@ -54,14 +56,14 @@ enum Commands {
     },
     /// Shut down clockie
     Quit,
-    /// Generate shell completions
+    /// Generate shell completions for the ctl subcommand
     Completions {
         /// Shell to generate completions for
         shell: Shell,
     },
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum GalleryAction {
     /// Advance to the next gallery image
     Next,
@@ -87,18 +89,6 @@ enum GalleryAction {
     },
 }
 
-fn socket_path(override_path: Option<&PathBuf>) -> PathBuf {
-    if let Some(p) = override_path {
-        return p.clone();
-    }
-    if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
-        PathBuf::from(dir).join("clockie.sock")
-    } else {
-        let uid = unsafe { libc::getuid() };
-        PathBuf::from(format!("/tmp/clockie-{}.sock", uid))
-    }
-}
-
 fn send_command(socket: &PathBuf, cmd: serde_json::Value) -> Result<serde_json::Value> {
     let mut stream = UnixStream::connect(socket)
         .with_context(|| format!("Failed to connect to clockie at {}", socket.display()))?;
@@ -116,19 +106,17 @@ fn send_command(socket: &PathBuf, cmd: serde_json::Value) -> Result<serde_json::
     Ok(resp)
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
-
+pub fn run(args: CtlArgs) -> Result<()> {
     // Handle completions before connecting to socket
-    if let Commands::Completions { shell } = &cli.command {
-        let mut cmd = Cli::command();
-        clap_complete::generate(*shell, &mut cmd, "clockiectl", &mut std::io::stdout());
+    if let Commands::Completions { shell } = &args.command {
+        let mut cmd = crate::Cli::command();
+        clap_complete::generate(*shell, &mut cmd, "clockie", &mut std::io::stdout());
         return Ok(());
     }
 
-    let sock = socket_path(cli.socket.as_ref());
+    let sock = ipc::socket_path(args.socket.as_ref());
 
-    let cmd = match &cli.command {
+    let cmd = match &args.command {
         Commands::Face { mode } => match mode.as_str() {
             "digital" => json!({"cmd": "set-face", "face": "digital"}),
             "analogue" => json!({"cmd": "set-face", "face": "analogue"}),
@@ -148,7 +136,6 @@ fn main() -> Result<()> {
                     let delta: i32 = s.parse().context("Invalid delta")?;
                     json!({"cmd": "scale-by", "delta": delta})
                 } else {
-                    // Try as font-size (float) or diameter (integer)
                     if let Ok(size) = s.parse::<f32>() {
                         json!({"cmd": "set-font-size", "size": size})
                     } else {
@@ -201,8 +188,7 @@ fn main() -> Result<()> {
     let resp = send_command(&sock, cmd)?;
 
     if let Some(true) = resp.get("ok").and_then(|v| v.as_bool()) {
-        // For state command, print the full response
-        if matches!(&cli.command, Commands::State) {
+        if matches!(&args.command, Commands::State) {
             println!("{}", serde_json::to_string_pretty(&resp)?);
         }
     } else {

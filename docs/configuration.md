@@ -81,7 +81,7 @@ When auto-contrast determines the background is light (luminance > 140), it swit
 
 Paths support `~` for the home directory (e.g. `"~/Pictures/clock.png"`).
 
-**Gallery:** Set `digital_gallery` or `analogue_gallery` to enable cycling for that mode. Use a folder path to include all images in that directory, or an explicit array to control the exact order. Use `clockiectl gallery next`/`prev` to cycle manually, or set `gallery_interval` to auto-rotate. When unset, the single-image fields (`digital_image`/`analogue_face_image`) are used.
+**Gallery:** Set `digital_gallery` or `analogue_gallery` to enable cycling for that mode. Use a folder path to include all images in that directory, or an explicit array to control the exact order. Use `clockie ctl gallery next`/`prev` to cycle manually, or set `gallery_interval` to auto-rotate. When unset, the single-image fields (`digital_image`/`analogue_face_image`) are used.
 
 ```toml
 # Folder — all images inside are used, sorted by filename

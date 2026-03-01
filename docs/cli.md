@@ -34,10 +34,10 @@ clockie -c ~/my-clockie.toml
 clockie --tz1 Europe/London --tz2 America/New_York
 ```
 
-## clockiectl (control client)
+## clockie ctl (control client)
 
 ```
-clockiectl [--socket <PATH>] <COMMAND>
+clockie ctl [--socket <PATH>] <COMMAND>
 
 Commands:
   face <MODE>       Set or toggle clock face (digital, analogue, toggle)
@@ -55,9 +55,9 @@ Commands:
 ### face
 
 ```sh
-clockiectl face digital    # switch to digital
-clockiectl face analogue   # switch to analogue
-clockiectl face toggle     # toggle between them
+clockie ctl face digital    # switch to digital
+clockie ctl face analogue   # switch to analogue
+clockie ctl face toggle     # toggle between them
 ```
 
 Switching face mode automatically resizes the window to fit the new content.
@@ -65,9 +65,9 @@ Switching face mode automatically resizes the window to fit the new content.
 ### compact
 
 ```sh
-clockiectl compact on      # enable compact mode
-clockiectl compact off     # disable compact mode
-clockiectl compact toggle  # toggle
+clockie ctl compact on      # enable compact mode
+clockie ctl compact off     # disable compact mode
+clockie ctl compact toggle  # toggle
 ```
 
 Compact mode reduces the time text to 70% of `font_size` (digital) or the face to 75% of `diameter` (analogue), hides the date line, and hides timezone sub-clocks.
@@ -75,9 +75,9 @@ Compact mode reduces the time text to 70% of `font_size` (digital) or the face t
 ### lock
 
 ```sh
-clockiectl lock on      # prevent dragging
-clockiectl lock off     # allow dragging
-clockiectl lock toggle  # toggle drag lock
+clockie ctl lock on      # prevent dragging
+clockie ctl lock off     # allow dragging
+clockie ctl lock toggle  # toggle drag lock
 ```
 
 When locked, pointer drags are ignored and the clock stays in place.
@@ -88,19 +88,19 @@ The `size` command adjusts `font_size` (digital mode) or `diameter` (analogue mo
 
 ```sh
 # Set font size directly (for digital mode)
-clockiectl size 64
+clockie ctl size 64
 
 # Scale up by 10 (adds to font_size or diameter, depending on current face)
-clockiectl size +10
+clockie ctl size +10
 
 # Scale down by 5
-clockiectl size -5
+clockie ctl size -5
 
 # Explicitly set font size
-clockiectl size font 72
+clockie ctl size font 72
 
 # Explicitly set analogue diameter
-clockiectl size diameter 240
+clockie ctl size diameter 240
 ```
 
 Minimum values: font size 10.0, diameter 40.
@@ -108,9 +108,9 @@ Minimum values: font size 10.0, diameter 40.
 ### output
 
 ```sh
-clockiectl output HDMI-A-1   # move to a specific output
-clockiectl output next       # cycle to the next output
-clockiectl output prev       # cycle to the previous output
+clockie ctl output HDMI-A-1   # move to a specific output
+clockie ctl output next       # cycle to the next output
+clockie ctl output prev       # cycle to the previous output
 ```
 
 The output name is persisted to config. You can also drag the clock across monitor edges -- see [Multi-monitor](multi-monitor.md).
@@ -120,13 +120,13 @@ The output name is persisted to config. You can also drag the clock across monit
 Control the background image gallery. Operates on whichever face mode is currently active (digital or analogue).
 
 ```sh
-clockiectl gallery next                # advance to next image
-clockiectl gallery prev                # go back to previous image
-clockiectl gallery set 2               # jump to image at index 2
-clockiectl gallery start               # start auto-rotate (uses configured interval)
-clockiectl gallery start --interval 5  # start auto-rotate with 5-second interval
-clockiectl gallery stop                # stop auto-rotate
-clockiectl gallery interval 10         # set rotate interval to 10 seconds
+clockie ctl gallery next                # advance to next image
+clockie ctl gallery prev                # go back to previous image
+clockie ctl gallery set 2               # jump to image at index 2
+clockie ctl gallery start               # start auto-rotate (uses configured interval)
+clockie ctl gallery start --interval 5  # start auto-rotate with 5-second interval
+clockie ctl gallery stop                # stop auto-rotate
+clockie ctl gallery interval 10         # set rotate interval to 10 seconds
 ```
 
 Requires `digital_gallery` or `analogue_gallery` to be configured in `[background]`. See [Configuration](configuration.md#background) for details.
@@ -134,7 +134,7 @@ Requires `digital_gallery` or `analogue_gallery` to be configured in `[backgroun
 ### reload
 
 ```sh
-clockiectl reload
+clockie ctl reload
 ```
 
 Re-reads the config file from disk. Preserves the current face mode and compact state. Applies changes to: colours, font, margins, anchor, layer, background images, gallery arrays, battery settings, timezones, font_size, diameter.
@@ -142,7 +142,7 @@ Re-reads the config file from disk. Preserves the current face mode and compact 
 ### state
 
 ```sh
-clockiectl state
+clockie ctl state
 ```
 
 Prints the current state as JSON:
@@ -171,7 +171,7 @@ Prints the current state as JSON:
 ### quit
 
 ```sh
-clockiectl quit
+clockie ctl quit
 ```
 
 Shuts down the clockie daemon cleanly.

@@ -1,6 +1,6 @@
 # IPC protocol
 
-For programmatic control beyond `clockiectl`, you can send JSON commands directly to the Unix socket.
+For programmatic control beyond `clockie ctl`, you can send JSON commands directly to the Unix socket.
 
 **Socket location:** `$XDG_RUNTIME_DIR/clockie.sock` (fallback: `/tmp/clockie-$UID.sock`)
 

@@ -17,8 +17,7 @@ src/
     analogue.rs           Analogue face rendering
     subclock.rs           Timezone sub-clock rendering
     battery.rs            Battery indicator rendering
-  bin/
-    clockiectl.rs         Control client binary
+  ctl.rs                  Control client (clockie ctl subcommand)
 ```
 
 ## Rendering pipeline

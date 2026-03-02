@@ -65,10 +65,19 @@ fn discover_images_in_dir(dir: &str) -> Vec<String> {
 
 impl GallerySetting {
     /// Resolve to an ordered list of absolute image paths.
+    /// The magic value `"bundled"` resolves to the bundled SVG face presets
+    /// directory (found via XDG data dirs or relative to the executable).
     pub fn resolve(&self) -> Vec<String> {
         match self {
             GallerySetting::Images(v) => v.clone(),
             GallerySetting::Dir(path) => {
+                if path == "bundled" {
+                    if let Some(faces_dir) = find_bundled_faces_dir() {
+                        return discover_images_in_dir(&faces_dir);
+                    }
+                    log::warn!("analogue_gallery = \"bundled\" but no bundled faces directory found");
+                    return Vec::new();
+                }
                 let expanded = expand_tilde_path(path);
                 let p = std::path::Path::new(&expanded);
                 if p.is_dir() {
@@ -466,6 +475,42 @@ impl Default for BackgroundConfig {
 ///   direct path (with tilde expansion) and returns it if the file exists.
 /// - Otherwise treats `name` as a preset and searches XDG data dirs for
 ///   `clockie/faces/{name}.svg`.
+/// Search for the bundled faces directory: checks XDG data dirs first,
+/// then falls back to a path relative to the running executable (for Nix).
+pub fn find_bundled_faces_dir() -> Option<String> {
+    let data_home = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
+        format!("{}/.local/share", home)
+    });
+
+    let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")
+        .unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
+
+    let mut search_dirs = vec![data_home];
+    search_dirs.extend(xdg_data_dirs.split(':').map(String::from));
+
+    for dir in &search_dirs {
+        let path = format!("{}/clockie/faces", dir);
+        if std::path::Path::new(&path).is_dir() {
+            return Some(path);
+        }
+    }
+
+    // Fallback: look relative to the executable (works for Nix store paths)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(bin_dir) = exe.parent() {
+            let path = bin_dir.join("../share/clockie/faces");
+            if path.is_dir() {
+                if let Some(s) = path.to_str() {
+                    return Some(s.to_string());
+                }
+            }
+        }
+    }
+
+    None
+}
+
 pub fn resolve_face_preset(name: &str) -> Option<String> {
     if name.is_empty() {
         return None;
@@ -484,20 +529,9 @@ pub fn resolve_face_preset(name: &str) -> Option<String> {
         };
     }
 
-    // Preset name: search XDG data dirs
-    let data_home = std::env::var("XDG_DATA_HOME").unwrap_or_else(|_| {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-        format!("{}/.local/share", home)
-    });
-
-    let xdg_data_dirs = std::env::var("XDG_DATA_DIRS")
-        .unwrap_or_else(|_| "/usr/local/share:/usr/share".into());
-
-    let mut search_dirs = vec![data_home];
-    search_dirs.extend(xdg_data_dirs.split(':').map(String::from));
-
-    for dir in &search_dirs {
-        let path = format!("{}/clockie/faces/{}.svg", dir, name);
+    // Preset name: search bundled faces directory
+    if let Some(faces_dir) = find_bundled_faces_dir() {
+        let path = format!("{}/{}.svg", faces_dir, name);
         if std::path::Path::new(&path).exists() {
             return Some(path);
         }

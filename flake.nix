@@ -34,8 +34,16 @@
           libxkbcommon
         ];
 
+        # Include standard Cargo sources plus bundled SVG faces
+        src = pkgs.lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            (craneLib.filterCargoSources path type)
+            || (builtins.match ".*faces/.*\\.svg$" path != null);
+        };
+
         commonArgs = {
-          src = craneLib.cleanCargoSource ./.;
+          inherit src;
           strictDeps = true;
           inherit nativeBuildInputs buildInputs;
         };

@@ -105,6 +105,13 @@ analogue_gallery = "~/.config/clockie/faces/analogue/"
 digital_gallery = ["~/wallpapers/a.png", "~/wallpapers/b.jpg"]
 ```
 
+**Cycling bundled presets:** Set `analogue_gallery` to the special value `"bundled"` to cycle through the bundled SVG face presets. Clockie will automatically locate the installed presets directory (via XDG data dirs or relative to the executable), so this works on NixOS without any manual file copying.
+
+```toml
+analogue_gallery = "bundled"
+gallery_interval = 300
+```
+
 **Scale modes:**
 - `fill` -- scale to cover the entire area, cropping overflow (default)
 - `fit` -- scale to fit within the area, letterboxing as needed

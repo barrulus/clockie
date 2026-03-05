@@ -200,6 +200,12 @@ pub struct BackgroundConfig {
     pub analogue_gallery: Option<GallerySetting>,
     #[serde(default)]
     pub gallery_interval: u64,
+    /// Persisted gallery index for digital mode (restored on restart).
+    #[serde(default)]
+    pub gallery_digital_index: usize,
+    /// Persisted gallery index for analogue mode (restored on restart).
+    #[serde(default)]
+    pub gallery_analogue_index: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -464,6 +470,8 @@ impl Default for BackgroundConfig {
             digital_gallery: None,
             analogue_gallery: None,
             gallery_interval: 0,
+            gallery_digital_index: 0,
+            gallery_analogue_index: 0,
         }
     }
 }
@@ -681,6 +689,44 @@ pub fn save_compact_to_config(path: &std::path::Path, compact: bool) {
 
     write_config_doc(path, &doc);
     log::info!("Persisted compact={} to {}", compact, path.display());
+}
+
+pub fn save_diameter_to_config(path: &std::path::Path, diameter: u32) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_clock_table(&mut doc);
+
+    doc["clock"]["diameter"] = toml_edit::value(diameter as i64);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted diameter={} to {}", diameter, path.display());
+}
+
+pub fn save_font_size_to_config(path: &std::path::Path, font_size: f32) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_clock_table(&mut doc);
+
+    doc["clock"]["font_size"] = toml_edit::value(font_size as f64);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted font_size={} to {}", font_size, path.display());
+}
+
+/// Ensure a [background] table exists in the document, creating one if needed.
+fn ensure_background_table(doc: &mut toml_edit::DocumentMut) {
+    if !doc.contains_key("background") {
+        doc["background"] = toml_edit::Item::Table(toml_edit::Table::new());
+    }
+}
+
+pub fn save_gallery_indices_to_config(path: &std::path::Path, digital_index: usize, analogue_index: usize) {
+    let Some(mut doc) = read_config_doc(path) else { return };
+    ensure_background_table(&mut doc);
+
+    doc["background"]["gallery_digital_index"] = toml_edit::value(digital_index as i64);
+    doc["background"]["gallery_analogue_index"] = toml_edit::value(analogue_index as i64);
+
+    write_config_doc(path, &doc);
+    log::info!("Persisted gallery indices digital={} analogue={} to {}", digital_index, analogue_index, path.display());
 }
 
 pub fn load_config(path: &std::path::Path) -> Result<ClockConfig> {

@@ -47,11 +47,20 @@ impl GalleryState {
     fn from_config(config: &ClockConfig) -> Self {
         let interval_secs = config.background.gallery_interval;
         let rotate_interval = Duration::from_secs(interval_secs);
+        let digital_images = config.background.effective_digital_images();
+        let analogue_images = config.background.effective_analogue_face_images();
+        // Restore saved gallery indices, clamping to valid range
+        let digital_index = if digital_images.is_empty() { 0 } else {
+            config.background.gallery_digital_index.min(digital_images.len() - 1)
+        };
+        let analogue_index = if analogue_images.is_empty() { 0 } else {
+            config.background.gallery_analogue_index.min(analogue_images.len() - 1)
+        };
         Self {
-            digital_index: 0,
-            analogue_index: 0,
-            digital_images: config.background.effective_digital_images(),
-            analogue_images: config.background.effective_analogue_face_images(),
+            digital_index,
+            analogue_index,
+            digital_images,
+            analogue_images,
             rotate_interval,
             rotate_active: interval_secs > 0,
             last_rotate: Instant::now(),
@@ -521,6 +530,14 @@ impl Clockie {
 
     /// Recompute window size from content and apply if changed.
     /// Clamps margins so the window stays within the current output.
+    fn save_gallery_indices(&self) {
+        config::save_gallery_indices_to_config(
+            &self.config_path,
+            self.gallery.digital_index,
+            self.gallery.analogue_index,
+        );
+    }
+
     fn update_size(&mut self) {
         let (new_w, new_h) = renderer::compute_size(&self.config, &self.font, self.compact);
         if new_w != self.width || new_h != self.height {
@@ -756,20 +773,24 @@ impl Clockie {
             ipc::IpcCommand::SetFontSize { size } => {
                 self.config.clock.font_size = size.max(10.0);
                 self.update_size();
+                config::save_font_size_to_config(&self.config_path, self.config.clock.font_size);
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::SetDiameter { diameter } => {
                 self.config.clock.diameter = diameter.max(40);
                 self.update_size();
+                config::save_diameter_to_config(&self.config_path, self.config.clock.diameter);
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::ScaleBy { delta } => {
                 match self.config.clock.face {
                     FaceMode::Digital => {
                         self.config.clock.font_size = (self.config.clock.font_size + delta as f32).max(10.0);
+                        config::save_font_size_to_config(&self.config_path, self.config.clock.font_size);
                     }
                     FaceMode::Analogue => {
                         self.config.clock.diameter = (self.config.clock.diameter as i32 + delta).max(40) as u32;
+                        config::save_diameter_to_config(&self.config_path, self.config.clock.diameter);
                     }
                 }
                 self.update_size();
@@ -882,6 +903,7 @@ impl Clockie {
                 }
                 self.needs_redraw = true;
                 self.contrast_dirty = true;
+                self.save_gallery_indices();
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GalleryPrev => {
@@ -891,6 +913,7 @@ impl Clockie {
                 }
                 self.needs_redraw = true;
                 self.contrast_dirty = true;
+                self.save_gallery_indices();
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GallerySet { index } => {
@@ -916,6 +939,7 @@ impl Clockie {
                 }
                 self.needs_redraw = true;
                 self.contrast_dirty = true;
+                self.save_gallery_indices();
                 ipc::IpcResponse::ok()
             }
             ipc::IpcCommand::GalleryRotateStart { interval } => {
